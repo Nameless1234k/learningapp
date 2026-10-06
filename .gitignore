@@ -1,0 +1,41 @@
+# IDE / Editor
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Archives / Backups
+*.rar
+*.zip
+*.7z
+*.tar.gz
+*.bak
+
+# Backend (Gradle / Java / Kotlin)
+**/.gradle/
+**/build/
+**/.kotlin/
+**/out/
+**/bin/
+HELP.md
+
+# Frontend (Flutter / Dart)
+**/.dart_tool/
+**/.pub-cache/
+**/.pub/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/ephemeral/
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+
+# Local properties / credentials
+**/local.properties
