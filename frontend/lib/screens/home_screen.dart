@@ -1,136 +1,142 @@
 import 'package:flutter/material.dart';
-import 'document_list_screen.dart';
-import 'login_screen.dart'; // Import màn hình đăng nhập
+import '../widgets/app_refresh_indicator.dart';
+
+// =========================================================================================
+// [TÊN FILE: home_screen.dart]
+// [VỊ TRÍ]: lib/screens/home_screen.dart
+// [MỤC ĐÍCH]: Màn hình Trang chủ (Tab 1 mặc định khi người dùng vừa đăng nhập thành công).
+// Hiển thị lời chào và tổng quan tính năng của ứng dụng.
+// =========================================================================================
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final Function(int)? onSwitchTab; // Callback chuyển tab nếu bấm vào phím tắt trên trang chủ
+
+  const HomeScreen({super.key, this.onSwitchTab});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFFF5F7FA), // Màu nền xám nhạt toàn ứng dụng
       appBar: AppBar(
-        title: const Text('Trang chủ', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF15193B),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Đăng xuất',
-            onPressed: () {
-              // Xóa toàn bộ lịch sử trang và quay về màn hình Đăng Nhập
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-                (route) => false, // false nghĩa là xóa sạch các trang trước đó
-              );
-            },
+        title: const Text(
+          'Trang chủ',
+          style: TextStyle(
+            color: Color(0xFF15193B),
+            fontWeight: FontWeight.bold,
           ),
-        ],
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
+        child: AppRefreshIndicator(
+          onRefresh: () async {
+            // Hiệu ứng làm mới mượt mà trên trang chủ
+            await Future.delayed(const Duration(milliseconds: 300));
+          },
+          child: SingleChildScrollView(
+            physics: AppRefreshIndicator.alwaysScrollPhysics,
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // 1. Tiêu đề chào mừng người dùng
               const Text(
                 'Chào mừng bạn trở lại!',
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF15193B),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               const Text(
-                'Khám phá các tài liệu và tính năng học tập.',
+                'Tiếp tục hành trình học tập các môn lý luận chính trị.',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   color: Colors.black54,
                 ),
               ),
-              const SizedBox(height: 40),
-              _buildFeatureCard(
-                context,
-                title: 'Danh sách tài liệu',
-                description: 'Xem và quản lý các tài liệu học tập của bạn',
-                icon: Icons.description_outlined,
+              const SizedBox(height: 28),
+
+              // 2. Banner phím tắt dẫn vào mục "Tài liệu"
+              GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const DocumentListScreen()),
-                  );
+                  // Chuyển sang Tab 2 (Tài liệu)
+                  if (onSwitchTab != null) {
+                    onSwitchTab!(2);
+                  }
                 },
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF15193B), Color(0xFF2E3856)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF15193B).withOpacity(0.25),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.menu_book_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Kho tài liệu học tập',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Xem danh sách 5 môn học & bài học',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.white70,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              // Có thể thêm các tính năng khác ở đây sau này
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildFeatureCard(BuildContext context, {
-    required String title,
-    required String description,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF15193B).withOpacity(0.06),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF15193B).withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: const Color(0xFF15193B), size: 32),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF15193B),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
-          ],
-        ),
-      ),
-    );
+    ),
+  );
   }
 }

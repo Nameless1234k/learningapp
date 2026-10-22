@@ -4,7 +4,7 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/input_label.dart';
-import 'home_screen.dart';
+import 'main_navigation_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -56,10 +56,10 @@ class LoginScreenState extends State<LoginScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ));
     } else {
-      // Thành công -> Chuyển sang Trang Chủ
+      // Thành công -> Chuyển sang Màn hình chính có Bottom Navigation Bar (mặc định mở Tab Trang chủ)
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
       );
     }
   }
@@ -90,6 +90,14 @@ class LoginScreenState extends State<LoginScreen> {
                       hintText: 'ví dụ: username@gmail.com',
                       keyboardType: TextInputType.emailAddress,
                       prefixIcon: Icons.email_outlined,
+                      textInputAction: TextInputAction.next,
+                      onSubmitted: (_) {
+                        if (_passwordController.text.isNotEmpty) {
+                          _login();
+                        } else {
+                          FocusScope.of(context).nextFocus();
+                        }
+                      },
                     ),
                     const SizedBox(height: 4),
                     const InputLabel(text: 'Mật khẩu'),
@@ -98,6 +106,8 @@ class LoginScreenState extends State<LoginScreen> {
                       hintText: 'Nhập mật khẩu',
                       isPassword: true,
                       prefixIcon: Icons.lock_outline,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _login(),
                     ),
                     
                     Align(

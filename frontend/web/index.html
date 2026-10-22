@@ -29,8 +29,13 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Learning App</title>
-  <link rel="manifest" href="manifest.json">
+  <!-- Thư viện pdf.js bắt buộc cho syncfusion_flutter_pdfviewer trên nền tảng Web -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+  <script type="text/javascript">
+    window.pdfjsLib = window.pdfjsLib || {};
+    window.pdfjsLib.GlobalWorkerOptions = window.pdfjsLib.GlobalWorkerOptions || {};
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js";
+  </script>
 </head>
 <body>
   <!--

@@ -41,7 +41,7 @@ class AuthService(
 ) {
 
     // Biểu thức chính quy (Regex) kiểm tra định dạng email chuẩn ở phía máy chủ
-    private val emailRegex = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$".toRegex()
+    private val emailRegex = "^[A-Za-z0-9._%+-]+@gmail\\.com$".toRegex()
 
     /**
      * CHỨC NĂNG 1: ĐĂNG KÝ TÀI KHOẢN (REGISTER)
@@ -70,13 +70,15 @@ class AuthService(
         // 3. Băm mật khẩu bằng thuật toán BCrypt an toàn
         val encodedPassword = passwordEncoder.encode(request.password)
 
-        // 4. Khởi tạo thực thể User (Entity) để chuẩn bị lưu vào Database
+        // 4. Khởi tạo thực thể User (Entity) để chuẩn bị lưu vào Database (mặc định role = USER)
         val newUser = User(
             firstName = request.firstName,
             lastName = request.lastName,
             email = trimmedEmail,
             phone = request.phone,
-            passwordHash = encodedPassword
+            passwordHash = encodedPassword,
+            isActive = true,
+            role = "USER"
         )
         // Lưu vào cơ sở dữ liệu qua UserRepository
         val savedUser = userRepository.save(newUser)
@@ -89,7 +91,8 @@ class AuthService(
             token = token,
             userId = savedUser.id.toString(),
             email = savedUser.email,
-            fullName = "${savedUser.lastName} ${savedUser.firstName}"
+            fullName = "${savedUser.lastName} ${savedUser.firstName}",
+            role = savedUser.role
         )
     }
 
@@ -97,13 +100,19 @@ class AuthService(
      * CHỨC NĂNG 2: ĐĂNG NHẬP (LOGIN)
      * Các bước:
      * 1. Tìm tài khoản theo email trong Database.
-     * 2. So khớp mật khẩu người dùng nhập với mật khẩu đã băm (passwordEncoder.matches).
-     * 3. Sinh token JWT và trả về thông tin người dùng.
+     * 2. Kiểm tra tài khoản có bị khóa không (is_active = false).
+     * 3. So khớp mật khẩu người dùng nhập với mật khẩu đã băm (passwordEncoder.matches).
+     * 4. Sinh token JWT và trả về thông tin người dùng.
      */
     fun login(request: LoginRequest): AuthResponse {
         // Toán tử elvis ?: trong Kotlin: nếu vế trái null thì thực hiện vế phải (giống 'if not user: raise ...')
         val user = userRepository.findByEmail(request.email.trim())
             ?: throw IllegalArgumentException("Tài khoản hoặc mật khẩu không chính xác!")
+
+        // Kiểm tra trạng thái tài khoản: nếu đã bị admin khóa (is_active = false)
+        if (!user.isActive) {
+            throw IllegalArgumentException("tài khoản của bạn đã bị khóa vui lòng liên hệ với admin để biết rõ chi tiết")
+        }
 
         // Kiểm tra mật khẩu (hàm matches tự động băm mật khẩu nhập vào và so với hash trong DB)
         if (!passwordEncoder.matches(request.password, user.passwordHash)) {
@@ -117,7 +126,8 @@ class AuthService(
             token = token,
             userId = user.id.toString(),
             email = user.email,
-            fullName = "${user.lastName} ${user.firstName}"
+            fullName = "${user.lastName} ${user.firstName}",
+            role = user.role
         )
     }
 

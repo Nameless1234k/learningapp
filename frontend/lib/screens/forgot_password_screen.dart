@@ -102,6 +102,10 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               CustomTextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
+                hintText: 'VD: username@gmail.com',
+                prefixIcon: Icons.email_outlined,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _sendOtp(),
               ),
               
               const SizedBox(height: 16),

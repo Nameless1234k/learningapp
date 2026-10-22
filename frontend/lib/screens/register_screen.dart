@@ -127,6 +127,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                 controller: _lastNameController,
                 hintText: 'VD: Nguyễn Văn',
                 prefixIcon: Icons.person_outline,
+                textInputAction: TextInputAction.next,
               ),
               
               const InputLabel(text: 'Tên chính'),
@@ -134,6 +135,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                 controller: _firstNameController,
                 hintText: 'VD: A',
                 prefixIcon: Icons.person_outline,
+                textInputAction: TextInputAction.next,
               ),
               
               const InputLabel(text: 'Email'),
@@ -142,6 +144,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                 hintText: 'VD: username@gmail.com',
                 keyboardType: TextInputType.emailAddress,
                 prefixIcon: Icons.email_outlined,
+                textInputAction: TextInputAction.next,
               ),
               
               const InputLabel(text: 'Số điện thoại'),
@@ -150,6 +153,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                 hintText: 'VD: 0123456789',
                 keyboardType: TextInputType.phone,
                 prefixIcon: Icons.phone_outlined,
+                textInputAction: TextInputAction.next,
               ),
               
               const InputLabel(text: 'Nhập mật khẩu'),
@@ -158,6 +162,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                 hintText: 'Tối thiểu 8 kí tự',
                 isPassword: true,
                 prefixIcon: Icons.lock_outline,
+                textInputAction: TextInputAction.next,
               ),
               
               const InputLabel(text: 'Xác nhận mật khẩu'),
@@ -166,6 +171,8 @@ class RegisterScreenState extends State<RegisterScreen> {
                 hintText: 'Tối thiểu 8 kí tự',
                 isPassword: true,
                 prefixIcon: Icons.lock_outline,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _register(),
               ),
               
               const SizedBox(height: 16),

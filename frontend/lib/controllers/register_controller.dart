@@ -18,7 +18,7 @@ class RegisterController {
   // - Phần mở rộng: .com, .vn, .edu... (phải có dấu chấm và ít nhất 2 ký tự chữ cái)
   // Chặn hoàn toàn các lỗi sai như: @gmailcom, @mail.com, user@gmailcom, user@, user...
   static final RegExp _emailRegex = RegExp(
-    r'^[a-zA-Z0-9](\.?[a-zA-Z0-9]){5,29}@gmail\.com$',
+    r'^[a-zA-Z0-9._%+-]+@gmail\.com$',
   );
 
   // Hàm register không nhận BuildContext nữa. 

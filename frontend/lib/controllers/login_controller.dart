@@ -1,4 +1,5 @@
 import '../services/auth_service.dart';
+import '../services/user_session.dart';
 
 // [TÊN FILE: login_controller.dart]
 // [VỊ TRÍ]: lib/controllers/login_controller.dart
@@ -18,7 +19,15 @@ class LoginController {
 
     // 2. Logic gọi API
     try {
-      await _authService.login(email, password);
+      final authData = await _authService.login(email, password);
+      // Tự động lưu thông tin phiên làm việc bền vững vào UserSession (LocalStorage)
+      await UserSession.saveSession(
+        userId: authData['userId']?.toString() ?? '',
+        token: authData['token']?.toString() ?? '',
+        email: authData['email']?.toString() ?? email,
+        fullName: authData['fullName']?.toString() ?? '',
+        role: authData['role']?.toString().toUpperCase() ?? 'USER',
+      );
       // Nếu không văng lỗi (catch) nghĩa là API chạy thành công
       return null;
       

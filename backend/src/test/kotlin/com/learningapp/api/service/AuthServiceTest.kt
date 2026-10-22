@@ -74,7 +74,7 @@ class AuthServiceTest {
             id = userId,
             firstName = "Van A",
             lastName = "Nguyen",
-            email = "test@example.com",
+            email = "test@gmail.com",
             phone = "0123456789",
             passwordHash = "hashed_password_123"
         )
@@ -91,7 +91,7 @@ class AuthServiceTest {
         val request = RegisterRequest(
             firstName = "Van A",
             lastName = "Nguyen",
-            email = "test@example.com",
+            email = "test@gmail.com",
             phone = "0123456789",
             password = "Password@123"
         )
@@ -108,7 +108,7 @@ class AuthServiceTest {
         // 3. Assert (Kiểm tra kết quả - giống assert trong Python / Java)
         assertNotNull(response) // Kết quả trả về không được null
         assertEquals("mocked_jwt_token", response.token) // Token phải khớp với mã giả lập
-        assertEquals("test@example.com", response.email) // Email khớp với user
+        assertEquals("test@gmail.com", response.email) // Email khớp với user
         assertEquals("Nguyen Van A", response.fullName) // Họ tên ghép đúng định dạng
 
         // Verify: Đảm bảo hàm save vào DB đã được gọi đúng 1 lần
@@ -122,7 +122,7 @@ class AuthServiceTest {
         val request = RegisterRequest(
             firstName = "Van B",
             lastName = "Tran",
-            email = "test@example.com",
+            email = "test@gmail.com",
             phone = null,
             password = "Password@123"
         )
@@ -172,7 +172,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("TC03 - Đăng nhập thành công với email và mật khẩu chính xác")
     fun testLogin_Success() {
-        val request = LoginRequest(email = "test@example.com", password = "Password@123")
+        val request = LoginRequest(email = "test@gmail.com", password = "Password@123")
 
         // Mock tìm thấy user và mật khẩu khớp BCrypt
         `when`(userRepository.findByEmail(request.email)).thenReturn(sampleUser)
@@ -189,7 +189,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("TC04 - Đăng nhập thất bại khi sai mật khẩu")
     fun testLogin_WrongPassword_ThrowsException() {
-        val request = LoginRequest(email = "test@example.com", password = "WrongPassword")
+        val request = LoginRequest(email = "test@gmail.com", password = "WrongPassword")
 
         `when`(userRepository.findByEmail(request.email)).thenReturn(sampleUser)
         // Mock mật khẩu không khớp
@@ -202,12 +202,26 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("TC04B - Đăng nhập thất bại khi tài khoản bị khóa (is_active = false)")
+    fun testLogin_UserInactive_ThrowsException() {
+        val inactiveUser = sampleUser.copy(isActive = false)
+        val request = LoginRequest(email = "test@gmail.com", password = "Password@123")
+
+        `when`(userRepository.findByEmail(request.email)).thenReturn(inactiveUser)
+
+        val exception = assertThrows(IllegalArgumentException::class.java) {
+            authService.login(request)
+        }
+        assertEquals("tài khoản của bạn đã bị khóa vui lòng liên hệ với admin để biết rõ chi tiết", exception.message)
+    }
+
+    @Test
     @DisplayName("TC05 - Đăng nhập thất bại khi tài khoản email không tồn tại")
     fun testLogin_UserNotFound_ThrowsException() {
-        val request = LoginRequest(email = "notfound@example.com", password = "Password@123")
+        val request = LoginRequest(email = "notfound@gmail.com", password = "Password@123")
 
         // Mock tìm không thấy user trong DB
-        `when`(userRepository.findByEmail("notfound@example.com")).thenReturn(null)
+        `when`(userRepository.findByEmail("notfound@gmail.com")).thenReturn(null)
 
         val exception = assertThrows(IllegalArgumentException::class.java) {
             authService.login(request)
@@ -222,7 +236,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("TC06 - Gửi mã OTP thành công khi email tồn tại trong hệ thống")
     fun testForgotPassword_Success() {
-        val request = ForgotPasswordRequest(email = "test@example.com")
+        val request = ForgotPasswordRequest(email = "test@gmail.com")
 
         `when`(userRepository.findByEmail(request.email)).thenReturn(sampleUser)
         `when`(passwordEncoder.encode(anyString())).thenReturn("hashed_otp")
@@ -241,7 +255,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("TC07 - Gửi mã OTP thất bại khi email không tồn tại")
     fun testForgotPassword_UserNotFound_ThrowsException() {
-        val request = ForgotPasswordRequest(email = "nonexistent@example.com")
+        val request = ForgotPasswordRequest(email = "nonexistent@gmail.com")
         `when`(userRepository.findByEmail(request.email)).thenReturn(null)
 
         val exception = assertThrows(IllegalArgumentException::class.java) {
@@ -257,7 +271,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("TC08 - Xác thực OTP thành công khi mã đúng và còn hạn")
     fun testVerifyOtp_Success() {
-        val request = VerifyOtpRequest(email = "test@example.com", otp = "123456")
+        val request = VerifyOtpRequest(email = "test@gmail.com", otp = "123456")
 
         // Tạo đối tượng OTP hợp lệ (còn hạn 1 phút, chưa dùng)
         val validOtp = PasswordResetOtp(
@@ -285,7 +299,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("TC09 - Xác thực OTP thất bại khi nhập sai mã")
     fun testVerifyOtp_WrongCode_ThrowsException() {
-        val request = VerifyOtpRequest(email = "test@example.com", otp = "999999")
+        val request = VerifyOtpRequest(email = "test@gmail.com", otp = "999999")
 
         val validOtp = PasswordResetOtp(
             id = UUID.randomUUID(),
@@ -310,7 +324,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("TC10 - Xác thực OTP thất bại khi mã đã hết hạn")
     fun testVerifyOtp_Expired_ThrowsException() {
-        val request = VerifyOtpRequest(email = "test@example.com", otp = "123456")
+        val request = VerifyOtpRequest(email = "test@gmail.com", otp = "123456")
 
         // Tạo OTP đã hết hạn từ 5 phút trước
         val expiredOtp = PasswordResetOtp(
@@ -338,7 +352,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("TC11 - Đổi mật khẩu thành công sau khi mã OTP đã được xác thực hợp lệ")
     fun testResetPassword_Success() {
-        val request = ResetPasswordRequest(email = "test@example.com", newPassword = "NewPassword@123")
+        val request = ResetPasswordRequest(email = "test@gmail.com", newPassword = "NewPassword@123")
 
         // OTP đã được verify thành công (isUsed = true) cách đây 2 phút
         val verifiedOtp = PasswordResetOtp(
@@ -366,7 +380,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("TC12 - Đổi mật khẩu thất bại khi chưa xác thực mã OTP trước đó")
     fun testResetPassword_WithoutVerifiedOtp_ThrowsException() {
-        val request = ResetPasswordRequest(email = "test@example.com", newPassword = "NewPassword@123")
+        val request = ResetPasswordRequest(email = "test@gmail.com", newPassword = "NewPassword@123")
 
         // Danh sách OTP rỗng hoặc chưa từng xác thực thành công
         `when`(userRepository.findByEmail(request.email)).thenReturn(sampleUser)

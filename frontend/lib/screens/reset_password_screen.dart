@@ -110,6 +110,7 @@ class ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 hintText: 'Tối thiểu 8 kí tự',
                 isPassword: true,
                 prefixIcon: Icons.lock_outline,
+                textInputAction: TextInputAction.next,
               ),
               
               const InputLabel(text: 'Nhập lại mật khẩu'),
@@ -118,6 +119,8 @@ class ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 hintText: 'Nhập lại mật khẩu',
                 isPassword: true,
                 prefixIcon: Icons.lock_outline,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _resetPassword(),
               ),
               
               const SizedBox(height: 32),

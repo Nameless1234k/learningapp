@@ -42,20 +42,7 @@ class VerifyOtpScreenState extends State<VerifyOtpScreen> {
     // 1. Lấy chuỗi OTP được ghép từ các ô riêng lẻ
     final otp = _otpController.text.trim();
 
-    // 2. Kiểm tra đủ 6 số trước khi gửi cho hệ thống
-    if (otp.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Vui lòng nhập đủ 6 chữ số"),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-      return;
-    }
-
-    // 3. Gửi chuỗi OTP lên hệ thống để xác thực
+    // 2. Chuyển chuỗi OTP cho Controller xử lý logic kiểm tra và xác thực
     _runOtpAction(
       action: () => _verifyOtpController.verifyOtp(widget.email, otp),
       onSuccess: () {
@@ -184,6 +171,7 @@ class VerifyOtpScreenState extends State<VerifyOtpScreen> {
               OtpCodeInput(
                 controller: _otpController,
                 focusNode: _otpFocusNode,
+                onCompleted: (_) => _verifyOtp(),
               ),
               const SizedBox(height: 12),
               Center(

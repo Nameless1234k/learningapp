@@ -6,6 +6,9 @@ class CustomTextField extends StatefulWidget {
   final bool isPassword;
   final TextInputType keyboardType;
   final IconData? prefixIcon;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
+  final FocusNode? focusNode;
 
   const CustomTextField({
     super.key,
@@ -14,6 +17,9 @@ class CustomTextField extends StatefulWidget {
     this.isPassword = false,
     this.keyboardType = TextInputType.text,
     this.prefixIcon,
+    this.textInputAction,
+    this.onSubmitted,
+    this.focusNode,
   });
 
   @override
@@ -30,6 +36,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF15193B).withOpacity(0.05),
@@ -40,8 +47,16 @@ class _CustomTextFieldState extends State<CustomTextField> {
       ),
       child: TextField(
         controller: widget.controller,
+        focusNode: widget.focusNode,
         obscureText: widget.isPassword && _obscureText,
+        enableSuggestions: !widget.isPassword,
+        autocorrect: !widget.isPassword,
         keyboardType: widget.keyboardType,
+        textInputAction: widget.textInputAction,
+        onSubmitted: widget.onSubmitted ??
+            (widget.textInputAction == TextInputAction.next
+                ? (_) => FocusScope.of(context).nextFocus()
+                : null),
         style: const TextStyle(fontSize: 16),
         onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
         decoration: InputDecoration(

@@ -54,6 +54,10 @@ data class User(
     @Column(name = "is_active", nullable = false)
     var isActive: Boolean = true,
 
+    // Vai trò tài khoản: "USER" hoặc "ADMIN" (mặc định là "USER")
+    @Column(name = "role", nullable = false, length = 10)
+    var role: String = "USER",
+
     // Thời điểm tạo tài khoản (updatable = false: không cho phép cập nhật sau khi tạo)
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),

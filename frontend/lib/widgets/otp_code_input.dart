@@ -52,28 +52,37 @@ class _OtpCodeInputState extends State<OtpCodeInput> {
     final node = FocusNode(
       debugLabel: 'OtpBox_$index',
       onKeyEvent: (focusNode, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.backspace ||
-                event.logicalKey == LogicalKeyboardKey.delete)) {
-          // Khi nhấn phím xóa trên ô hiện tại có ký tự -> Xóa số ô này
-          if (_controllers[index].text.isNotEmpty) {
-            _controllers[index].clear();
-            _values[index] = '';
-            _syncToParent();
-            setState(() {});
+          if (event is KeyDownEvent &&
+              (event.logicalKey == LogicalKeyboardKey.backspace ||
+                  event.logicalKey == LogicalKeyboardKey.delete)) {
+            // Khi nhấn phím xóa trên ô hiện tại có ký tự -> Xóa số ô này
+            if (_controllers[index].text.isNotEmpty) {
+              _controllers[index].clear();
+              _values[index] = '';
+              _syncToParent();
+              setState(() {});
+              return KeyEventResult.handled;
+            }
+            // Khi ô hiện tại đã trống và nhấn phím xóa -> Lùi về ô trước và xóa số ô trước
+            if (index > 0) {
+              _focusNodes[index - 1].requestFocus();
+              _controllers[index - 1].clear();
+              _values[index - 1] = '';
+              _syncToParent();
+              setState(() {});
+              return KeyEventResult.handled;
+            }
+          }
+
+          // Khi nhấn phím Enter trên bàn phím cứng -> Kích hoạt xác nhận OTP
+          if (event is KeyDownEvent &&
+              (event.logicalKey == LogicalKeyboardKey.enter ||
+                  event.logicalKey == LogicalKeyboardKey.numpadEnter)) {
+            final combined = _controllers.map((c) => c.text).join();
+            widget.onCompleted?.call(combined);
             return KeyEventResult.handled;
           }
-          // Khi ô hiện tại đã trống và nhấn phím xóa -> Lùi về ô trước và xóa số ô trước
-          if (index > 0) {
-            _focusNodes[index - 1].requestFocus();
-            _controllers[index - 1].clear();
-            _values[index - 1] = '';
-            _syncToParent();
-            setState(() {});
-            return KeyEventResult.handled;
-          }
-        }
-        return KeyEventResult.ignored;
+          return KeyEventResult.ignored;
       },
     );
 
@@ -283,6 +292,13 @@ class _OtpCodeInputState extends State<OtpCodeInput> {
                     controller: _controllers[index],
                     focusNode: _focusNodes[index],
                     keyboardType: TextInputType.number,
+                    textInputAction: index == _otpLength - 1
+                        ? TextInputAction.done
+                        : TextInputAction.next,
+                    onSubmitted: (_) {
+                      final combined = _controllers.map((c) => c.text).join();
+                      widget.onCompleted?.call(combined);
+                    },
                     textAlign: TextAlign.center,
                     cursorColor: const Color(0xFF15193B),
                     cursorWidth: 2,

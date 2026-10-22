@@ -11,8 +11,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 
 /**
  * =========================================================================================
- * [GIẢI THÍCH CHO NGƯỜI HỌC CÓ NỀN TẢNG JAVA / PYTHON]:
- *
  * 1. @RestControllerAdvice là gì?
  *    - Trong Spring Boot (Java), đây là một "Bộ đón bắt ngoại lệ tập trung" (Global Exception Handler).
  *    - Hoạt động giống như việc bạn bọc toàn bộ các route trong một khối "try...except" lớn trong Python Flask/FastAPI.
