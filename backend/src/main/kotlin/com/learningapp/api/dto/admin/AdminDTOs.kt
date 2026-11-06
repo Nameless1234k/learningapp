@@ -44,6 +44,7 @@ data class AdminLessonResponse(
     val filePath: String?,
     val fileSizeBytes: Long? = null,
     val fileSizeMb: Double? = null,
+    val totalPages: Int? = null,
     val lessonNo: Int,
     val title: String,
     val createdAt: String

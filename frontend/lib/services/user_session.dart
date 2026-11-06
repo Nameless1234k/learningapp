@@ -1,12 +1,15 @@
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_endpoints.dart';
 
 // =========================================================================================
-// [TÊN FILE]: user_session.dart
+// [TÊN FILE: user_session.dart]
 // [VỊ TRÍ]: lib/services/user_session.dart
 // [MỤC ĐÍCH]: Lưu trữ và quản lý phiên làm việc của người dùng (User Session) bền vững.
 // - Lưu trữ đồng thời trong RAM (truy cập tức thì đồng bộ) và SharedPreferences/LocalStorage
 //   (bền vững khi nhấn F5 tải lại trang Web hoặc đóng/mở lại app Mobile).
 // - Quản lý phân quyền Role: 'ADMIN' hoặc 'USER' để bảo vệ các tuyến đường riêng biệt.
+// - Xác thực tính hợp lệ của JWT Token: tự động clear khi Backend restart hoặc hết hạn.
 // =========================================================================================
 
 class UserSession {
@@ -96,5 +99,38 @@ class UserSession {
       await prefs.remove(_keyFullName);
       await prefs.remove(_keyRole);
     } catch (_) {}
+  }
+
+  /// Xác thực JWT Token với Backend:
+  /// - Nếu Backend tắt/khởi động lại hoặc token hết hạn (> 24h) -> Server trả về 401
+  /// - Khi đó hàm tự động xóa sạch phiên làm việc (clear) và trả về false.
+  static Future<bool> validateSession() async {
+    if (currentToken == null || currentToken!.trim().isEmpty) {
+      await clear();
+      return false;
+    }
+
+    try {
+      final url = Uri.parse(ApiEndpoints.validateTokenAPI);
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $currentToken',
+        },
+      ).timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        // Backend đã khởi động lại hoặc Token hết hạn -> Xóa phiên đăng nhập
+        await clear();
+        return false;
+      }
+      return true;
+    } catch (_) {
+      // Khi mất kết nối hoặc không có mạng, không tự ý xóa phiên để không gián đoạn
+      return true;
+    }
   }
 }

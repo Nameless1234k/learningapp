@@ -12,7 +12,12 @@ interface LessonRepository : JpaRepository<Lesson, UUID> {
     fun findBySubjectIdOrderByLessonNoAsc(subjectId: UUID): List<Lesson>
     fun countBySubjectId(subjectId: UUID): Long
     fun findTopBySubjectIdOrderByLessonNoDesc(subjectId: UUID): Lesson?
-    fun findAllByOrderByCreatedAtDesc(): List<Lesson>
+
+    // Tìm bài đầu tiên của môn học (lesson_no nhỏ nhất, thường là Bài 1)
+    fun findTopBySubjectIdOrderByLessonNoAsc(subjectId: UUID): Lesson?
+
+    // Tìm các bài kế tiếp trong cùng môn học có lesson_no lớn hơn bài hiện tại
+    fun findBySubjectIdAndLessonNoGreaterThanOrderByLessonNoAsc(subjectId: UUID, lessonNo: Int): List<Lesson>
 
     @Query("SELECT l FROM Lesson l WHERE " +
            "(:subjectId IS NULL OR l.subjectId = :subjectId) AND " +

@@ -8,6 +8,7 @@ import com.learningapp.api.repository.DocumentRepository
 import com.learningapp.api.repository.LessonRepository
 import com.learningapp.api.repository.SubjectRepository
 import com.learningapp.api.util.FileStorageHelper
+import org.apache.pdfbox.Loader
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
@@ -25,6 +26,19 @@ class AdminLessonService(
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     private val maxFileSize = 200L * 1024 * 1024 // 200 MB
     private val uploadDir: File get() = FileStorageHelper.uploadDir
+
+    /**
+     * Tự động trích xuất tổng số trang (total_pages) của file PDF bằng Apache PDFBox
+     */
+    private fun extractPdfTotalPages(file: File): Int? {
+        return try {
+            Loader.loadPDF(file).use { doc ->
+                doc.numberOfPages
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     /**
      * Lấy danh sách bài học kèm tìm kiếm và lọc môn học
@@ -53,6 +67,7 @@ class AdminLessonService(
                 filePath = doc?.filePath,
                 fileSizeBytes = sizeBytes,
                 fileSizeMb = sizeMb,
+                totalPages = doc?.totalPages,
                 lessonNo = lesson.lessonNo,
                 title = lesson.title,
                 createdAt = lesson.createdAt.format(dateFormatter)
@@ -110,6 +125,7 @@ class AdminLessonService(
             filePath = savedDoc?.filePath,
             fileSizeBytes = createdSizeBytes,
             fileSizeMb = createdSizeMb,
+            totalPages = savedDoc?.totalPages,
             lessonNo = savedLesson.lessonNo,
             title = savedLesson.title,
             createdAt = savedLesson.createdAt.format(dateFormatter)
@@ -178,6 +194,7 @@ class AdminLessonService(
             filePath = doc?.filePath,
             fileSizeBytes = updatedSizeBytes,
             fileSizeMb = updatedSizeMb,
+            totalPages = doc?.totalPages,
             lessonNo = savedLesson.lessonNo,
             title = savedLesson.title,
             createdAt = savedLesson.createdAt.format(dateFormatter)
@@ -209,7 +226,7 @@ class AdminLessonService(
     }
 
     /**
-     * Hàm phụ trợ xử lý upload và kiểm tra định dạng file
+     * Hàm phụ trợ xử lý upload, tự động đếm số trang PDF và kiểm tra định dạng file
      */
     private fun handleFileUpload(file: MultipartFile, subjectCode: String, subjectId: UUID): Document {
         val originalName = file.originalFilename ?: "tailieu.pdf"
@@ -236,11 +253,15 @@ class AdminLessonService(
         val destFile = File(subDir, finalFileName)
         file.transferTo(destFile)
 
-        // 4. Lưu thực thể Document vào CSDL
+        // Tự động đếm số trang PDF của tệp vừa tải lên
+        val pageCount = extractPdfTotalPages(destFile)
+
+        // 4. Lưu thực thể Document vào CSDL kèm total_pages tự động
         val document = Document(
             subjectId = subjectId,
             fileName = originalName,
             filePath = "/api/documents/files/$subjectCode/$finalFileName",
+            totalPages = pageCount,
             createdAt = LocalDateTime.now(),
             updatedAt = LocalDateTime.now()
         )

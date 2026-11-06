@@ -67,20 +67,22 @@ class DocumentListScreenState extends State<DocumentListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFBFBFD), // Màu nền xám trắng chuẩn thiết kế
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFFBFBFD),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 1. PHẦN HEADER: Tiêu đề "Tài liệu", thông tin tổng môn và Chuông thông báo
-            _buildTopHeader(),
+            _buildTopHeader(isDark),
 
             const SizedBox(height: 12),
 
             // 2. PHẦN BODY: Danh sách 5 môn học kèm vòng tròn % tiến độ
             Expanded(
-              child: _buildBodyContent(),
+              child: _buildBodyContent(isDark),
             ),
           ],
         ),
@@ -89,7 +91,7 @@ class DocumentListScreenState extends State<DocumentListScreen> {
   }
 
   // Widget hiển thị Header phía trên theo đúng Screen 9 của Adobe XD
-  Widget _buildTopHeader() {
+  Widget _buildTopHeader(bool isDark) {
     final totalSubjects = _subjectListData?.totalSubjects ?? 5;
     final readSubjects = _subjectListData?.readSubjects ?? 0;
 
@@ -103,20 +105,20 @@ class DocumentListScreenState extends State<DocumentListScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Tài liệu',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF15193B),
+                  color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF15193B),
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 '$totalSubjects môn · đã đọc $readSubjects/$totalSubjects môn',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF8E8E93),
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF8E8E93),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -138,13 +140,16 @@ class DocumentListScreenState extends State<DocumentListScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB),
+                  width: 1.2,
+                ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.notifications_none_rounded,
-                color: Color(0xFF15193B),
+                color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF15193B),
                 size: 24,
               ),
             ),
@@ -155,11 +160,13 @@ class DocumentListScreenState extends State<DocumentListScreen> {
   }
 
   // Widget hiển thị nội dung chính: danh sách môn hoặc trạng thái Loading / Error
-  Widget _buildBodyContent() {
+  Widget _buildBodyContent(bool isDark) {
     // Đang tải dữ liệu
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF15193B)),
+      return Center(
+        child: CircularProgressIndicator(
+          color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF15193B),
+        ),
       );
     }
 
@@ -183,13 +190,19 @@ class DocumentListScreenState extends State<DocumentListScreen> {
                 Text(
                   _errorMessage!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.black87, fontSize: 15),
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFFCBD5E1) : Colors.black87,
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _fetchSubjects,
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF15193B)),
-                  child: const Text('Tải lại', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF15193B),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Tải lại'),
                 ),
               ],
             ),
@@ -210,19 +223,25 @@ class DocumentListScreenState extends State<DocumentListScreen> {
             constraints: BoxConstraints(
               minHeight: MediaQuery.of(context).size.height * 0.65,
             ),
-            child: const Column(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.folder_open_rounded, size: 54, color: Colors.grey),
-                SizedBox(height: 16),
+                const Icon(Icons.folder_open_rounded, size: 54, color: Colors.grey),
+                const SizedBox(height: 16),
                 Text(
                   'Chưa có môn học nào trong hệ thống.',
-                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFF94A3B8) : Colors.grey,
+                    fontSize: 16,
+                  ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
                   'Vuốt xuống để làm mới.',
-                  style: TextStyle(color: Colors.black38, fontSize: 13),
+                  style: TextStyle(
+                    color: isDark ? const Color(0xFF64748B) : Colors.black38,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -240,26 +259,29 @@ class DocumentListScreenState extends State<DocumentListScreen> {
         itemCount: _subjectListData!.subjects.length,
         itemBuilder: (context, index) {
           final subject = _subjectListData!.subjects[index];
-          return _buildSubjectCard(subject);
+          return _buildSubjectCard(subject, isDark);
         },
       ),
     );
   }
 
   // Widget vẽ từng thẻ Môn học (Card) theo chuẩn thiết kế Screen 9
-  Widget _buildSubjectCard(SubjectItem subject) {
+  Widget _buildSubjectCard(SubjectItem subject, bool isDark) {
     // Lấy bài tiếp theo hoặc hiển thị mặc định
     final nextLessonText = subject.nextLesson ?? 'Chưa bắt đầu học';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.4),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+          width: 1.4,
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF15193B).withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -287,7 +309,7 @@ class DocumentListScreenState extends State<DocumentListScreen> {
           child: Row(
             children: [
               // 1. Vòng tròn hiển thị % tiến độ môn học bên trái
-              _buildProgressCircle(subject.progressPercent),
+              _buildProgressCircle(subject.progressPercent, isDark),
 
               const SizedBox(width: 16),
 
@@ -298,10 +320,10 @@ class DocumentListScreenState extends State<DocumentListScreen> {
                   children: [
                     Text(
                       subject.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF15193B),
+                        color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF15193B),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -309,9 +331,9 @@ class DocumentListScreenState extends State<DocumentListScreen> {
                     const SizedBox(height: 6),
                     Text(
                       nextLessonText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: Color(0xFF8E8E93),
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF8E8E93),
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
@@ -322,9 +344,9 @@ class DocumentListScreenState extends State<DocumentListScreen> {
               ),
 
               // 3. Mũi tên điều hướng '>' sang màn hình chi tiết
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: Color(0xFF15193B),
+                color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF15193B),
                 size: 26,
               ),
             ],
@@ -335,7 +357,7 @@ class DocumentListScreenState extends State<DocumentListScreen> {
   }
 
   // Widget vẽ Vòng tròn % tiến độ bo tròn theo Adobe XD Screen 9
-  Widget _buildProgressCircle(double percent) {
+  Widget _buildProgressCircle(double percent, bool isDark) {
     final int displayPercent = percent.toInt();
     final double progressValue = (percent / 100.0).clamp(0.0, 1.0);
 
@@ -349,18 +371,20 @@ class DocumentListScreenState extends State<DocumentListScreen> {
           CircularProgressIndicator(
             value: progressValue,
             strokeWidth: 4.5,
-            backgroundColor: const Color(0xFFE5E7EB), // Màu xám cho phần chưa học
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF15193B)), // Màu xanh đậm cho phần đã học
+            backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              isDark ? const Color(0xFF38BDF8) : const Color(0xFF15193B),
+            ),
             strokeCap: StrokeCap.round,
           ),
           // Con số % ở giữa vòng tròn
           Center(
             child: Text(
               '$displayPercent%',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF15193B),
+                color: isDark ? Colors.white : const Color(0xFF15193B),
               ),
             ),
           ),

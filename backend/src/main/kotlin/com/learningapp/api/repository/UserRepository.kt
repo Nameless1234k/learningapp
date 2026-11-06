@@ -10,9 +10,6 @@ interface UserRepository : JpaRepository<User, UUID> {
     // Tìm người dùng theo email (trả về User hoặc null nếu không thấy)
     fun findByEmail(email: String): User?
 
-    // Tìm người dùng theo số điện thoại
-    fun findByPhone(phone: String): User?
-
     // Lấy tất cả người dùng sắp xếp mới nhất lên đầu
     fun findAllByOrderByCreatedAtDesc(): List<User>
 

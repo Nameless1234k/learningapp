@@ -13,16 +13,30 @@ import 'pdf_viewer_screen.dart';
 //   và hiển thị ra danh sách bài học, thời gian đã đọc bài học đó và trạng thái bài học.
 // - Nhánh rẽ: Nếu môn học chưa có tài liệu, hiển thị "Hệ thống đang cập nhật tài liệu".
 // - Nhánh rẽ: Kích nút "<--" thì quay lại trang môn học (Screen 9).
+// - Hỗ trợ mở bài đọc trực tiếp từ "Phiên học hôm nay". Khi thoát PDF, người dùng sẽ ở lại
+//   đúng trang bài học này chứ không bị văng thẳng về Trang chủ!
 // =========================================================================================
 
 class SubjectDetailScreen extends StatefulWidget {
   final String subjectId; // Mã định danh UUID của môn học
   final String subjectName; // Tên môn học để hiển thị trên Header (vd: Triết học Mác - Lênin)
+  final String? initialOpenLessonId;
+  final String? initialOpenPdfUrl;
+  final String? initialOpenTitle;
+  final int? initialOpenLastPosition;
+  final int? initialOpenReadingSeconds;
+  final bool? initialOpenIsRead;
 
   const SubjectDetailScreen({
     super.key,
     required this.subjectId,
     required this.subjectName,
+    this.initialOpenLessonId,
+    this.initialOpenPdfUrl,
+    this.initialOpenTitle,
+    this.initialOpenLastPosition,
+    this.initialOpenReadingSeconds,
+    this.initialOpenIsRead,
   });
 
   @override
@@ -37,6 +51,7 @@ class SubjectDetailScreenState extends State<SubjectDetailScreen> {
   SubjectDetailModel? _subjectDetail;
   bool _isLoading = true; // Trạng thái đang tải từ API
   String? _errorMessage; // Chuỗi lỗi nếu kết nối thất bại
+  bool _hasAutoOpened = false;
 
   /// Hàm công khai hỗ trợ làm mới danh sách bài học từ bên ngoài hoặc qua cử chỉ kéo
   Future<void> refresh({bool silent = false}) => _loadLessons(silent: silent);
@@ -46,6 +61,34 @@ class SubjectDetailScreenState extends State<SubjectDetailScreen> {
     super.initState();
     // Gọi API nạp danh sách bài học ngay khi mở màn hình
     _loadLessons();
+
+    // Tự động mở bài đọc PDF nếu chuyển tiếp từ Phiên học hôm nay
+    if (widget.initialOpenLessonId != null &&
+        widget.initialOpenPdfUrl != null &&
+        !_hasAutoOpened) {
+      _hasAutoOpened = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final fullPdfUrl = _controller.resolvePdfUrl(widget.initialOpenPdfUrl!);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PdfViewerScreen(
+              title: widget.initialOpenTitle ?? 'Bài học',
+              pdfUrl: fullPdfUrl,
+              lessonId: widget.initialOpenLessonId,
+              initialIsRead: widget.initialOpenIsRead ?? false,
+              initialReadingSeconds: widget.initialOpenReadingSeconds ?? 0,
+              initialLastPosition: widget.initialOpenLastPosition ?? 1,
+            ),
+          ),
+        ).then((_) {
+          // Khi thoát trình đọc PDF: Học viên ở lại đúng trang bài học này,
+          // và tự động nạp lại danh sách bài để cập nhật % tiến độ môn & bài vừa học!
+          _loadLessons(silent: true);
+        });
+      });
+    }
   }
 
   // Hàm gọi Controller để tải bài học (silent = true khi làm mới ngầm lúc quay lại từ PDF)
@@ -76,20 +119,22 @@ class SubjectDetailScreenState extends State<SubjectDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFBFBFD), // Màu nền xám trắng tinh tế
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFFBFBFD),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 1. PHẦN HEADER: Nút quay lại '<', Tên môn học và Phụ đề tiến độ
-            _buildHeader(),
+            _buildHeader(isDark),
 
             const SizedBox(height: 12),
 
             // 2. PHẦN BODY: Danh sách bài học hoặc trạng thái Lỗi / Đang cập nhật
             Expanded(
-              child: _buildBodyContent(),
+              child: _buildBodyContent(isDark),
             ),
           ],
         ),
@@ -98,7 +143,7 @@ class SubjectDetailScreenState extends State<SubjectDetailScreen> {
   }
 
   // Widget xây dựng thanh Header phía trên giống thiết kế Adobe XD Screen 14
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isDark) {
     // Định dạng % tiến độ thành chuỗi không có số thập phân thừa
     final progressStr = _subjectDetail != null
         ? '${_subjectDetail!.progressPercent.toInt()}%'
@@ -123,13 +168,16 @@ class SubjectDetailScreenState extends State<SubjectDetailScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB),
+                  width: 1.2,
+                ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.chevron_left,
-                color: Color(0xFF15193B),
+                color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF15193B),
                 size: 28,
               ),
             ),
@@ -142,21 +190,21 @@ class SubjectDetailScreenState extends State<SubjectDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _subjectDetail?.subjectName ?? widget.subjectName,
-                  style: const TextStyle(
+                  widget.subjectName,
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF15193B),
+                    color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF15193B),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
-                  '$totalLessonsStr · $progressStr',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF8E8E93),
+                  'Đã hoàn thành $progressStr ($totalLessonsStr)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? const Color(0xFF94A3B8) : Colors.black54,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -168,210 +216,221 @@ class SubjectDetailScreenState extends State<SubjectDetailScreen> {
     );
   }
 
-  // Widget xây dựng nội dung bài học
-  Widget _buildBodyContent() {
-    // Trường hợp 1: Đang tải dữ liệu từ máy chủ
+  // Widget hiển thị nội dung thân màn hình
+  Widget _buildBodyContent(bool isDark) {
+    // Trạng thái 1: Đang tải dữ liệu từ API
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(
-          color: Color(0xFF15193B),
+          color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF15193B),
         ),
       );
     }
 
-    // Trường hợp 2: Gặp lỗi kết nối mạng
+    // Trạng thái 2: Gặp lỗi kết nối
     if (_errorMessage != null) {
-      return AppRefreshIndicator(
-        onRefresh: () => _loadLessons(silent: false),
-        child: SingleChildScrollView(
-          physics: AppRefreshIndicator.alwaysScrollPhysics,
-          child: Container(
-            alignment: Alignment.center,
-            padding: const EdgeInsets.all(24.0),
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height * 0.65,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.wifi_off_rounded, size: 56, color: Colors.grey),
-                const SizedBox(height: 16),
-                Text(
-                  _errorMessage!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.black87, fontSize: 15),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? const Color(0xFFCBD5E1) : Colors.black87,
+                  fontSize: 14,
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => _loadLessons(silent: false),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF15193B)),
-                  child: const Text('Thử lại', style: TextStyle(color: Colors.white)),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => _loadLessons(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDark ? const Color(0xFF38BDF8) : const Color(0xFF15193B),
+                  foregroundColor: Colors.white,
                 ),
-              ],
-            ),
+                child: const Text('Thử lại'),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    // Trường hợp 3: Luồng rẽ nhánh 3.2 - Môn học chưa có tài liệu / bài học
+    // Trạng thái 3: Môn học chưa có tài liệu/bài học nào
     if (_subjectDetail == null || _subjectDetail!.lessons.isEmpty) {
-      return AppRefreshIndicator(
-        onRefresh: () => _loadLessons(silent: false),
-        child: SingleChildScrollView(
-          physics: AppRefreshIndicator.alwaysScrollPhysics,
-          child: Container(
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 40.0),
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height * 0.65,
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.menu_book_rounded, size: 56, color: isDark ? const Color(0xFF64748B) : Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'Hệ thống đang cập nhật tài liệu',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF15193B),
+              ),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF15193B).withOpacity(0.06),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.auto_stories_outlined,
-                    size: 54,
-                    color: Color(0xFF15193B),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Thông báo chính xác theo đặc tả Use Case trong file docx:
-                const Text(
-                  'Hệ thống đang cập nhật tài liệu',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF15193B),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Tài liệu cho môn học này đang được chuẩn bị và sẽ sớm được cập nhật.\nVuốt xuống để làm mới.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.black54,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 6),
+            Text(
+              'Vui lòng quay lại sau!',
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? const Color(0xFF94A3B8) : Colors.grey.shade600,
+              ),
             ),
-          ),
+          ],
         ),
       );
     }
 
-    // Trường hợp 4: Hiển thị danh sách các bài học (Screen 14 Adobe XD)
+    // Trạng thái 4: Hiển thị danh sách bài học dạng thẻ bo tròn
+    final lessons = _subjectDetail!.lessons;
+
     return AppRefreshIndicator(
       onRefresh: () => _loadLessons(silent: false),
       child: ListView.builder(
         physics: AppRefreshIndicator.alwaysScrollPhysics,
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-        itemCount: _subjectDetail!.lessons.length,
+        itemCount: lessons.length,
         itemBuilder: (context, index) {
-          final lesson = _subjectDetail!.lessons[index];
-          return _buildLessonCard(lesson);
+          final lesson = lessons[index];
+          return _buildLessonCard(lesson, isDark);
         },
       ),
     );
   }
 
-  // Widget vẽ từng thẻ Bài học bo tròn đẹp mắt
-  Widget _buildLessonCard(LessonItem lesson) {
-    // Trạng thái chuỗi: hiển thị thời gian học viên thực tế đã đọc từ database (ví dụ: "1 phút · đã đọc")
-    final readStatusText = lesson.isRead ? 'đã đọc' : 'chưa đọc';
-    final int displayMinutes = lesson.readingMinutes > 0
-        ? lesson.readingMinutes
-        : (lesson.isRead ? 1 : 0);
-    final durationText = '$displayMinutes phút';
+  // Widget xây dựng thẻ của từng bài học
+  Widget _buildLessonCard(LessonItem lesson, bool isDark) {
+    // Xác định màu sắc và trạng thái dựa trên isRead
+    final isCompleted = lesson.isRead || lesson.status == 'COMPLETED';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14.0),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.4),
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(16.0),
+        border: isDark ? Border.all(color: const Color(0xFF334155), width: 1.2) : null,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF15193B).withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-        title: Text(
-          lesson.title.trim().isNotEmpty
-              ? 'Bài ${lesson.lessonNo}. ${lesson.title}'
-              : 'Bài ${lesson.lessonNo}',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF15193B),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        // Icon bài học dạng tròn có màu nổi bật bên trái
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: isDark
+                ? (isCompleted ? const Color(0xFF064E3B) : const Color(0xFF334155))
+                : (isCompleted ? const Color(0xFFE8F5E9) : const Color(0xFFF0F2F5)),
+            shape: BoxShape.circle,
           ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+          child: Icon(
+            isCompleted ? Icons.check_circle_rounded : Icons.menu_book_rounded,
+            color: isCompleted
+                ? (isDark ? const Color(0xFF34D399) : Colors.green.shade600)
+                : (isDark ? const Color(0xFF38BDF8) : const Color(0xFF15193B)),
+            size: 22,
+          ),
         ),
+        // Tiêu đề bài học: hiển thị số thứ tự bài và tiêu đề chi tiết
+        title: Text(
+          'Bài ${lesson.lessonNo}. ${lesson.title}',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF15193B),
+          ),
+        ),
+        // Phụ đề: hiển thị thời gian học viên đã đọc thực tế (phút) và trạng thái
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6.0),
           child: Row(
             children: [
-              const Icon(
-                Icons.access_time,
-                size: 15,
-                color: Color(0xFF8E8E93),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '$durationText · $readStatusText',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF8E8E93),
-                  fontWeight: FontWeight.w500,
+              // Hiển thị thời gian đã đọc thực tế
+              if (lesson.readingMinutes > 0) ...[
+                Icon(
+                  Icons.timer_outlined,
+                  size: 14,
+                  color: isDark ? const Color(0xFF94A3B8) : Colors.black54,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Đã học ${lesson.readingMinutes} phút',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? const Color(0xFF94A3B8) : Colors.black54,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              // Trạng thái Chưa đọc / Đang học / Đã đọc
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? (isCompleted
+                          ? const Color(0xFF064E3B).withValues(alpha: 0.6)
+                          : (lesson.status == 'IN_PROGRESS'
+                              ? const Color(0xFF0C4A6E).withValues(alpha: 0.6)
+                              : const Color(0xFF334155)))
+                      : (isCompleted
+                          ? Colors.green.shade50
+                          : (lesson.status == 'IN_PROGRESS' ? Colors.blue.shade50 : Colors.grey.shade100)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isCompleted
+                      ? 'Đã đọc'
+                      : (lesson.status == 'IN_PROGRESS' ? 'Đang học' : 'Chưa đọc'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? (isCompleted
+                            ? const Color(0xFF34D399)
+                            : (lesson.status == 'IN_PROGRESS'
+                                ? const Color(0xFF38BDF8)
+                                : const Color(0xFF94A3B8)))
+                        : (isCompleted
+                            ? Colors.green.shade700
+                            : (lesson.status == 'IN_PROGRESS' ? Colors.blue.shade700 : Colors.black54)),
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        trailing: lesson.isRead
-            ? const Icon(
-                Icons.check_circle_rounded,
-                color: Color(0xFF10B981),
-                size: 24,
-              )
-            : const Icon(
-                Icons.chevron_right,
-                color: Color(0xFF15193B),
-                size: 24,
-              ),
+        // Mũi tên dẫn tiếp
+        trailing: Icon(
+          Icons.arrow_forward_ios_rounded,
+          size: 16,
+          color: isDark ? const Color(0xFF64748B) : Colors.black26,
+        ),
+        // Bấm vào bài học để mở đọc PDF
         onTap: () {
-          // =====================================================================================
-          // [XỬ LÝ MỞ TÀI LIỆU PDF HOÀN TOÀN ĐỘNG TỪ DATABASE]
-          // - KHÔNG CÒN GẮN CỨNG tên file PDF trong mã nguồn!
-          // - Đọc trực tiếp đường dẫn 'lesson.pdfUrl' do API trả về từ bảng 'documents'.
-          // =====================================================================================
-
-          // Trường hợp 1: Bài học này chưa được đính kèm tài liệu PDF
-          if (!_controller.hasPdfDocument(lesson.pdfUrl)) {
+          // Trường hợp 1: Bài học chưa có file PDF đính kèm trong Database
+          if (lesson.pdfUrl == null || lesson.pdfUrl!.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Row(
+                content: const Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.white, size: 20),
-                    const SizedBox(width: 8),
+                    Icon(Icons.info_outline, color: Colors.white, size: 20),
+                    SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        'Hệ thống đang cập nhật tài liệu cho "${lesson.title}"!',
-                        style: const TextStyle(fontSize: 14),
-                      ),
+                      child: Text('Hệ thống đang cập nhật tài liệu cho bài học này.'),
                     ),
                   ],
                 ),

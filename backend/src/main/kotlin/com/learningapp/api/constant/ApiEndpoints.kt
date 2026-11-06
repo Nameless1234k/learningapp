@@ -15,6 +15,11 @@ object ApiEndpoints {
         const val RESET_PASSWORD = "/reset-password"
     }
 
+    object Home {
+        const val BASE = "$BASE_API/home"
+        const val DASHBOARD = "/dashboard"
+    }
+
     object Subjects {
         const val BASE = "$BASE_API/subjects"
         const val GET_LESSONS = "/{id}/lessons"
@@ -33,5 +38,12 @@ object ApiEndpoints {
         const val SUBJECTS = "$BASE/subjects"
         const val LESSONS = "$BASE/lessons"
     }
-}
 
+    object UserProfile {
+        const val BASE = "$BASE_API/user"
+        const val PROFILE = "/profile"
+        const val CHANGE_PASSWORD = "/change-password"
+        const val SETTINGS = "/settings"
+        const val STATISTICS = "/statistics"
+    }
+}

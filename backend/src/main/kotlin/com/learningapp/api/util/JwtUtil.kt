@@ -9,54 +9,77 @@ import javax.crypto.SecretKey
 
 /**
  * =========================================================================================
- * [GIẢI THÍCH DÀNH CHO NGƯỜI HỌC CÓ NỀN TẢNG JAVA / PYTHON]:
- *
- * 1. @Component là gì?
- *    - Trong Spring Boot, @Component là annotation đánh dấu class này là một thành phần do Spring quản lý.
- *    - Bất kỳ Service nào cần dùng chỉ cần khai báo trong constructor là Spring sẽ tự inject vào.
- *
- * 2. @Value("\${...}") là gì?
- *    - Giống như os.environ.get(...) trong Python.
- *    - Nó đọc giá trị cấu hình từ file 'application.properties' (như mã bí mật jwt.secret, thời gian sống).
- *
- * 3. JWT (JSON Web Token) là gì?
- *    - Một chuỗi mã hóa gồm 3 phần: Header.Payload.Signature.
- *    - Khi đăng nhập thành công, Server ký chuỗi này bằng mã bí mật (secret key) rồi gửi về cho Flutter.
- *    - Khi Flutter gửi token này lên ở các request sau, Server chỉ cần kiểm tra chữ ký là biết user là ai
- *      mà không cần phải tra cứu lại mật khẩu trong DB.
+ * [TÊN FILE]: JwtUtil.kt
+ * [VỊ TRÍ]: backend/src/main/kotlin/com/learningapp/api/util/
+ * [MỤC ĐÍCH]: Xử lý ký số và xác thực JSON Web Token (JWT):
+ * - Thời gian sống: Tối đa 24 giờ (86,400,000 ms).
+ * - Cơ chế In-Memory Ephemeral Boot Secret:
+ *   + Mỗi khi Backend khởi động, một mã phiên chạy ngẫu nhiên (sessionBootSecret) được tạo trong RAM.
+ *   + Khi Backend chạy liên tục: Khóa giữ nguyên, JWT duy trì bình thường.
+ *   + Khi tắt Backend hoặc Khởi động lại: Khóa RAM biến mất và được sinh mới, lập tức vô hiệu hóa
+ *     toàn bộ JWT cũ mà KHÔNG cần tốn bộ nhớ Database/Redis, và KHÔNG gây nặng bộ nhớ cho điện thoại!
  * =========================================================================================
  */
 @Component
 class JwtUtil {
 
-    // Đọc chuỗi khóa bí mật từ application.properties
-    @Value("\${app.security.jwt.secret}")
-    private lateinit var secret: String
-
-    // Thời gian hết hạn của Token (mặc định 86,400,000 milliseconds = 24 giờ)
-    @Value("\${app.security.jwt.expiration}")
+    // Thời gian hết hạn của Token (mặc định tối đa 24 giờ = 86,400,000 milliseconds)
+    @Value("\${app.security.jwt.expiration:86400000}")
     private var expirationMs: Long = 86400000
 
-    // Khởi tạo khóa ký điện tử HMAC-SHA (lazy: chỉ khởi tạo lần đầu khi có hàm gọi đến nó)
+    // Khóa ký phiên chạy ngẫu nhiên trong bộ nhớ RAM
+    private val sessionBootSecret: String = UUID.randomUUID().toString() + UUID.randomUUID().toString()
+
+    // Khởi tạo khóa ký điện tử HMAC-SHA256 từ sessionBootSecret
     private val key: SecretKey by lazy {
-        Keys.hmacShaKeyFor(secret.toByteArray())
+        Keys.hmacShaKeyFor(sessionBootSecret.toByteArray())
     }
 
     /**
-     * Hàm sinh JWT Token từ email của người dùng
-     *
-     * @param email: Định danh của tài khoản
-     * @return Chuỗi token đã được ký bảo mật
+     * Hàm sinh JWT Token từ email của người dùng (tối đa 24h)
      */
     fun generateToken(email: String): String {
-        val now = Date() // Thời điểm cấp token
-        val expiryDate = Date(now.time + expirationMs) // Thời điểm token hết hạn
+        val now = Date()
+        val expiryDate = Date(now.time + expirationMs)
 
         return Jwts.builder()
-            .subject(email) // Lưu email vào phần payload
-            .issuedAt(now) // Ngày phát hành
-            .expiration(expiryDate) // Ngày hết hạn
-            .signWith(key) // Ký điện tử bằng Secret Key
-            .compact() // Đóng gói thành chuỗi String base64url
+            .subject(email)
+            .issuedAt(now)
+            .expiration(expiryDate)
+            .signWith(key)
+            .compact()
+    }
+
+    /**
+     * Kiểm tra tính hợp lệ của Token:
+     * - Trả về false nếu token đã hết hạn (> 24h) hoặc được cấp từ phiên chạy trước của Backend.
+     */
+    fun validateToken(token: String): Boolean {
+        return try {
+            val claims = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .payload
+            !claims.expiration.before(Date())
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Trích xuất Email từ Token nếu hợp lệ
+     */
+    fun extractEmail(token: String): String? {
+        return try {
+            Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .payload
+                .subject
+        } catch (e: Exception) {
+            null
+        }
     }
 }

@@ -31,9 +31,12 @@ import org.springframework.http.HttpStatus
 @ExtendWith(MockitoExtension::class)
 class AuthControllerTest {
 
-    // [MOCK SERVICE]: Giả lập AuthService để Controller không phụ thuộc vào logic thực tế
+    // [MOCK SERVICE]: Giả lập AuthService và JwtUtil để Controller không phụ thuộc vào logic thực tế
     @Mock
     private lateinit var authService: AuthService
+
+    @Mock
+    private lateinit var jwtUtil: com.learningapp.api.util.JwtUtil
 
     // [@InjectMocks]: Tự động đưa mock AuthService vào AuthController
     @InjectMocks

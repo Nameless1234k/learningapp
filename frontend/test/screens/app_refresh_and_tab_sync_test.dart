@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:learningapp/widgets/app_refresh_indicator.dart';
+import 'package:learningapp/widgets/app_bottom_nav_bar.dart';
 import 'package:learningapp/screens/home_screen.dart';
 import 'package:learningapp/screens/search_screen.dart';
 import 'package:learningapp/screens/practice_screen.dart';
@@ -98,13 +99,14 @@ void main() {
       final navState = tester.state<MainNavigationScreenState>(find.byType(MainNavigationScreen));
       expect(navState, isNotNull);
 
-      // Ban đầu ở Tab 0: Trang chủ
-      expect(find.text('Trang chủ'), findsWidgets);
-
-      // Nhấn chuyển sang Tab 2: Tài liệu qua bottom navigation bar
-      final docTabFinder = find.widgetWithText(InkWell, 'Tài liệu');
+      // Tìm nút bấm tab "Tài liệu" trên Bottom Bar
+      final docTabFinder = find.descendant(
+        of: find.byType(AppBottomNavBar),
+        matching: find.text('Tài liệu'),
+      );
       expect(docTabFinder, findsOneWidget);
 
+      // Bấm chuyển sang tab Tài liệu
       await tester.tap(docTabFinder);
       await tester.pump();
 
@@ -116,7 +118,7 @@ void main() {
       await tester.pump();
     });
 
-    testWidgets('TB02: Bấm banner trên HomeScreen tự động chuyển sang Tab Tài liệu và gọi làm mới', (tester) async {
+    testWidgets('TB02: Bấm vào Tab Tài liệu trên AppBottomNavBar tự động chuyển sang Tab 2 và gắn kết documentListKey', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: MainNavigationScreen(initialIndex: 0),
@@ -125,11 +127,14 @@ void main() {
 
       final navState = tester.state<MainNavigationScreenState>(find.byType(MainNavigationScreen));
 
-      // Bấm vào banner "Kho tài liệu học tập" trên HomeScreen
-      final bannerFinder = find.text('Kho tài liệu học tập');
-      expect(bannerFinder, findsOneWidget);
+      // Bấm vào tab "Tài liệu" trên Bottom Bar
+      final docTabFinder = find.descendant(
+        of: find.byType(AppBottomNavBar),
+        matching: find.text('Tài liệu'),
+      );
+      expect(docTabFinder, findsOneWidget);
 
-      await tester.tap(bannerFinder);
+      await tester.tap(docTabFinder);
       await tester.pump();
 
       // Kiểm tra state đã chuyển sang Tab 2 thành công

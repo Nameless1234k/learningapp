@@ -7,6 +7,7 @@ import '../services/user_session.dart';
 // [MỤC ĐÍCH]: Widget điều phối phiên đăng nhập tự động dùng chung cho cả App Mobile & Web Admin.
 // - Ngăn chặn tình trạng bị đăng xuất khi người dùng nhấn F5 tải lại trang Web hoặc đóng/mở App.
 // - Tự động nạp UserSession từ LocalStorage/SharedPreferences.
+// - Kiểm tra tính hợp lệ của JWT với Backend (hết hạn hoặc Backend khởi động lại).
 // - Kiểm tra Role Guard:
 //   + Nếu requiredRole là 'ADMIN': chỉ tài khoản ADMIN mới vào được authenticatedScreen.
 //   + Nếu requiredRole là 'USER': tài khoản hợp lệ tự động vào authenticatedScreen.
@@ -42,6 +43,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (!UserSession.isInitialized) {
       await UserSession.init();
     }
+    // Xác thực nhanh tính hợp lệ của JWT với Backend (nếu máy chủ restart, tự động đăng xuất)
+    if (UserSession.isLoggedIn) {
+      await UserSession.validateSession();
+    }
   }
 
   @override
@@ -59,24 +64,32 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
-        // Đã có phiên đăng nhập hợp lệ
-        if (UserSession.isLoggedIn) {
-          // Kiểm tra quyền hạn nếu có yêu cầu phân quyền Role Guard
-          if (widget.requiredRole != null) {
-            final requiredUpper = widget.requiredRole!.toUpperCase();
-            final currentUpper = (UserSession.currentRole ?? 'USER').toUpperCase();
-
-            // Nếu trang yêu cầu quyền ADMIN mà phiên hiện tại không phải ADMIN
-            if (requiredUpper == 'ADMIN' && currentUpper != 'ADMIN') {
-              return widget.unauthenticatedScreen;
-            }
-          }
-          // Hợp lệ -> Vào thẳng màn hình chính (không bao giờ văng ra login khi F5)
-          return widget.authenticatedScreen;
+        // BƯỚC 1: Kiểm tra xem đã đăng nhập chưa. Nếu chưa đăng nhập -> Cố định Light Mode cho các màn hình Auth
+        if (!UserSession.isLoggedIn) {
+          return Theme(
+            data: ThemeData.light(),
+            child: widget.unauthenticatedScreen,
+          );
         }
 
-        // Chưa đăng nhập -> Hiển thị màn hình đăng nhập tương ứng
-        return widget.unauthenticatedScreen;
+        // BƯỚC 2: Kiểm tra phân quyền Role Guard nếu có yêu cầu
+        if (widget.requiredRole != null) {
+          final userRole = UserSession.currentRole?.toUpperCase();
+          final requiredRoleUpper = widget.requiredRole!.toUpperCase();
+
+          // Nếu yêu cầu ADMIN nhưng tài khoản là USER -> Chặn lại và đẩy về unauthenticatedScreen
+          if (requiredRoleUpper == 'ADMIN' && userRole != 'ADMIN') {
+            return widget.unauthenticatedScreen;
+          }
+
+          // Nếu yêu cầu USER nhưng tài khoản là ADMIN -> Có thể cho phép hoặc chặn tùy chính sách
+          if (requiredRoleUpper == 'USER' && userRole == 'ADMIN') {
+            // Cho phép Admin xem trang người dùng bình thường
+          }
+        }
+
+        // BƯỚC 3: Phiên đăng nhập hợp lệ và đúng quyền -> Hiển thị màn hình chính
+        return widget.authenticatedScreen;
       },
     );
   }

@@ -15,19 +15,13 @@ import java.util.UUID
  * =========================================================================================
  * [TÊN FILE]: SubjectService.kt
  * [VỊ TRÍ]: backend/src/main/kotlin/com/learningapp/api/service/
- * [TẦNG KIẾN TRÚC]: Business Logic Layer (Tầng xử lý nghiệp vụ)
+ * [TẦNG KIẾN TRÚC]: Business Logic Layer (Tầng xử lý nghiệp vụ - Pattern MVC)
  *
  * [CHỨC NĂNG CHÍNH]:
  * - Xử lý nghiệp vụ hiển thị danh sách môn học và tiến độ hoàn thành của học viên.
  * - Xử lý chi tiết bài học thuộc môn và liên kết động tới tài liệu PDF từ bảng 'documents'.
- * - TRIỆT TIÊU HOÀN TOÀN VIỆC HARDCODE tên file PDF hay tiêu đề bài học.
- *
- * [LIÊN KẾT VỚI]:
- * - SubjectRepository: Truy vấn bảng 'subjects'.
- * - LessonRepository: Truy vấn bảng 'lessons'.
- * - DocumentRepository: Truy vấn bảng 'documents' để lấy đường dẫn file PDF thực tế.
- * - UserLessonProgressRepository: Truy vấn bảng 'user_lesson_progress' tính tiến độ học.
- * - SubjectDTOs: Đóng gói dữ liệu trả về cho SubjectController.
+ * - Tự động cập nhật số trang total_pages vào documents khi học viên đọc PDF.
+ * - Tự động tính phần trăm tiến độ bài học dựa trên last_position và total_pages.
  * =========================================================================================
  */
 @Service
@@ -41,15 +35,12 @@ class SubjectService(
         /**
          * [NGƯỠNG THỜI GIAN TỰ ĐỘNG HOÀN THÀNH BÀI HỌC]:
          * Số giây tối thiểu học viên cần đọc để hệ thống tự động ghi nhận là "ĐÃ ĐỌC" (COMPLETED).
-         * Muốn thay đổi ngưỡng (ví dụ: 30s, 60s, 120s...), chỉ cần chỉnh sửa con số này ở đây!
          */
         const val COMPLETION_READING_THRESHOLD_SECONDS = 60
     }
 
     /**
      * LẤY DANH SÁCH MÔN HỌC KÈM TIẾN ĐỘ HỌC CỦA NGƯỜI DÙNG (Dành cho Screen 9)
-     * - Truy vấn bảng 'subjects' được sắp xếp theo display_order.
-     * - Tính toán tổng số bài, số bài đã hoàn thành và phần trăm % tiến độ môn.
      */
     fun getSubjectsWithProgress(userId: UUID?): SubjectListResponse {
         val subjects = subjectRepository.findAllByOrderByDisplayOrderAsc()
@@ -57,7 +48,6 @@ class SubjectService(
             return SubjectListResponse(totalSubjects = 0, readSubjects = 0, subjects = emptyList())
         }
 
-        // Lấy toàn bộ tiến độ của user nếu user đã đăng nhập
         val userProgressMap = if (userId != null) {
             userLessonProgressRepository.findByUserId(userId).associateBy { it.lessonId }
         } else {
@@ -124,9 +114,6 @@ class SubjectService(
 
     /**
      * LẤY CHI TIẾT MÔN HỌC VÀ CÁC BÀI HỌC
-     * - Truy vấn danh sách bài học từ bảng 'lessons'.
-     * - Với mỗi bài học, nếu có 'document_id', truy vấn bảng 'documents' để lấy đường dẫn PDF thực tế.
-     * - Trả về 'pdfUrl' động trong LessonItemResponse, không còn gắn cứng tên file.
      */
     fun getSubjectDetail(subjectId: UUID, userId: UUID?): SubjectDetailResponse {
         val subject = subjectRepository.findById(subjectId).orElseThrow {
@@ -151,8 +138,6 @@ class SubjectService(
 
             val status = progress?.status ?: "NOT_STARTED"
 
-            // Lấy URL tài liệu PDF động từ bảng 'documents' nếu bài học đã được liên kết file
-            // Trả về endpoint chuẩn /api/documents/{docId}/file (tránh lỗi ký tự tiếng Việt trên URL, chuẩn bị sẵn cho Admin)
             val pdfUrl = lesson.documentId?.let { docId ->
                 val doc = documentRepository.findById(docId).orElse(null)
                 if (doc != null) "/api/documents/$docId/file" else null
@@ -193,13 +178,9 @@ class SubjectService(
 
     /**
      * TỰ ĐỘNG CẬP NHẬT TIẾN ĐỘ BÀI HỌC VÀ TIẾN ĐỘ MÔN HỌC (Zero-click)
-     * - Khi đọc đạt >= 60 giây HOẶC cuộn đến trang cuối (pageNumber >= totalPages với totalPages > 0):
-     *   Tự động chuyển status = "COMPLETED", progressPercent = 100.0, completedAt = NOW.
-     * - Khi thoát/chưa đạt điều kiện:
-     *   Nếu đang NOT_STARTED thì chuyển sang IN_PROGRESS.
-     * - Ghi nhận thời gian đọc thực tế vào reading_time_seconds.
-     * - Cập nhật lastPosition và lastReadAt.
-     * - Tự động tính lại tổng % hoàn thành của môn học.
+     * - Tự động cập nhật tổng số trang PDF vào documents nếu chưa có.
+     * - Tính toán % theo: (last_position / total_pages) * 100.
+     * - Khi đạt >= 60s hoặc lướt tới trang cuối -> COMPLETED (100%).
      */
     fun updateLessonProgress(
         userId: UUID,
@@ -220,29 +201,34 @@ class SubjectService(
             readingTimeSeconds = 0
         )
 
-        // 1. Cập nhật vị trí trang: Giữ trang đọc lớn nhất từng đạt được (không bị tụt khi lật ngược lại)
+        // Tự động lưu total_pages vào bảng documents nếu DB chưa có
+        if (lesson.documentId != null && request.totalPages > 0) {
+            val doc = documentRepository.findById(lesson.documentId!!).orElse(null)
+            if (doc != null && (doc.totalPages == null || doc.totalPages == 0)) {
+                doc.totalPages = request.totalPages
+                documentRepository.save(doc)
+            }
+        }
+
+        // 1. Cập nhật vị trí trang: Giữ trang đọc lớn nhất từng đạt được
         if (request.pageNumber > 0) {
             progress.lastPosition = Math.max(progress.lastPosition, request.pageNumber)
         }
         progress.lastReadAt = LocalDateTime.now()
 
-        // 2. Cập nhật thời gian đọc:
-        // - Nếu có durationSeconds (số giây đọc thêm của phiên này): cộng dồn vào tổng thời gian đã có
-        // - Hoặc lấy Max giữa thời gian hiện tại và secondsSpent (tổng thời gian tích lũy do Client gửi)
+        // 2. Cập nhật thời gian đọc
         if (request.durationSeconds != null && request.durationSeconds > 0) {
             progress.readingTimeSeconds += request.durationSeconds
         } else if (request.secondsSpent > 0) {
             progress.readingTimeSeconds = Math.max(progress.readingTimeSeconds, request.secondsSpent)
         }
 
-        // Điều kiện tự động hoàn thành:
-        // 1. Đã hoàn thành trước đó, HOẶC
-        // 2. Thời gian đọc tích lũy >= 60 giây (ngưỡng 60s), HOẶC
-        // 3. Đã cuộn đến trang cuối (request.pageNumber >= request.totalPages && request.totalPages > 0)
+        // Điều kiện tự động hoàn thành bài học:
         val isAlreadyCompleted = progress.status == "COMPLETED" || progress.progressPercent.toDouble() >= 100.0
         val isReachedThreshold = progress.readingTimeSeconds >= COMPLETION_READING_THRESHOLD_SECONDS || 
                                  request.secondsSpent >= COMPLETION_READING_THRESHOLD_SECONDS
-        val isReachedLastPage = request.totalPages > 0 && request.pageNumber >= request.totalPages
+        val isReachedLastPage = request.totalPages > 0 && 
+                               (request.pageNumber >= request.totalPages || progress.lastPosition >= request.totalPages)
 
         val shouldMarkCompleted = isAlreadyCompleted || isReachedThreshold || isReachedLastPage
 
@@ -252,8 +238,19 @@ class SubjectService(
             if (progress.completedAt == null) {
                 progress.completedAt = LocalDateTime.now()
             }
-        } else if (progress.status == "NOT_STARTED") {
-            progress.status = "IN_PROGRESS"
+        } else {
+            if (progress.status == "NOT_STARTED") {
+                progress.status = "IN_PROGRESS"
+            }
+            // TÍNH PHẦN TRĂM TIẾN ĐỘ THEO TRANG ĐỌC DỞ
+            if (request.totalPages > 0) {
+                val maxReached = Math.max(progress.lastPosition, request.pageNumber)
+                val calculated = Math.min(99.0, (maxReached.toDouble() / request.totalPages) * 100.0)
+                val rounded = Math.round(calculated * 10.0) / 10.0
+                if (rounded > progress.progressPercent.toDouble()) {
+                    progress.progressPercent = BigDecimal.valueOf(rounded)
+                }
+            }
         }
 
         userLessonProgressRepository.save(progress)
@@ -291,4 +288,3 @@ class SubjectService(
         )
     }
 }
-

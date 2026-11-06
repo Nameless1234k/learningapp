@@ -1,4 +1,5 @@
 import '../services/auth_service.dart';
+import '../services/theme_service.dart';
 import '../services/user_session.dart';
 
 // [TÊN FILE: login_controller.dart]
@@ -20,14 +21,20 @@ class LoginController {
     // 2. Logic gọi API
     try {
       final authData = await _authService.login(email, password);
+      final userId = authData['userId']?.toString() ?? '';
       // Tự động lưu thông tin phiên làm việc bền vững vào UserSession (LocalStorage)
       await UserSession.saveSession(
-        userId: authData['userId']?.toString() ?? '',
+        userId: userId,
         token: authData['token']?.toString() ?? '',
         email: authData['email']?.toString() ?? email,
         fullName: authData['fullName']?.toString() ?? '',
         role: authData['role']?.toString().toUpperCase() ?? 'USER',
       );
+
+      // Tự động nạp cấu hình Dark Mode của riêng người dùng này khi đăng nhập
+      if (userId.isNotEmpty) {
+        await ThemeService.loadUserSettings(userId);
+      }
       // Nếu không văng lỗi (catch) nghĩa là API chạy thành công
       return null;
       

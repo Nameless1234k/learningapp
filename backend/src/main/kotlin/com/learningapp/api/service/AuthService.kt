@@ -7,6 +7,7 @@ import com.learningapp.api.entity.User
 import com.learningapp.api.repository.PasswordResetOtpRepository
 import com.learningapp.api.repository.UserRepository
 import com.learningapp.api.util.JwtUtil
+import com.learningapp.api.util.ValidationUtil
 import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -55,10 +56,11 @@ class AuthService(
     fun register(request: RegisterRequest): AuthResponse {
         val trimmedEmail = request.email.trim()
 
-        // 1. Kiểm tra định dạng email
-        if (!emailRegex.matches(trimmedEmail)) {
-            throw IllegalArgumentException("Email không đúng định dạng!")
-        }
+        // 1. Kiểm tra Họ, Tên, Email, Số điện thoại và Mật khẩu hợp lệ bằng ValidationUtil chung
+        ValidationUtil.validateNames(request.firstName, request.lastName)
+        ValidationUtil.validateEmail(trimmedEmail)
+        ValidationUtil.validatePhone(request.phone)
+        ValidationUtil.validatePassword(request.password)
 
         // 2. Kiểm tra trùng lặp email
         val existingUser = userRepository.findByEmail(trimmedEmail)

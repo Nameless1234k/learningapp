@@ -24,11 +24,6 @@ import java.util.UUID
 interface DocumentRepository : JpaRepository<Document, UUID> {
 
     /**
-     * Tìm tất cả tài liệu thuộc về một môn học cụ thể
-     */
-    fun findBySubjectId(subjectId: UUID): List<Document>
-
-    /**
      * Tìm tài liệu theo tên file
      */
     fun findByFileName(fileName: String): Document?

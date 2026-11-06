@@ -4,6 +4,7 @@ import com.learningapp.api.constant.ApiEndpoints
 import com.learningapp.api.dto.ApiResponse
 import com.learningapp.api.dto.auth.*
 import com.learningapp.api.service.AuthService
+import com.learningapp.api.util.JwtUtil
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
@@ -34,7 +35,10 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping(ApiEndpoints.Auth.BASE)
 @CrossOrigin(origins = ["*"])
-class AuthController(private val authService: AuthService) {
+class AuthController(
+    private val authService: AuthService,
+    private val jwtUtil: JwtUtil
+) {
 
     /**
      * API ĐĂNG KÝ TÀI KHOẢN MỚI
@@ -122,5 +126,21 @@ class AuthController(private val authService: AuthService) {
         } catch (e: Exception) {
             ResponseEntity.badRequest().body(ApiResponse(false, e.message ?: "Lỗi đổi mật khẩu"))
         }
+    }
+
+    /**
+     * API KIỂM TRA TÍNH HỢP LỆ CỦA PHIÊN ĐĂNG NHẬP (VALIDATE JWT TOKEN)
+     * Đường dẫn: GET /api/auth/validate-token
+     * - Trả về 200 OK nếu Token còn hạn (< 24h) và thuộc phiên chạy hiện tại của Backend.
+     * - Trả về 401 Unauthorized nếu Token hết hạn hoặc Backend đã khởi động lại!
+     */
+    @GetMapping("/validate-token")
+    fun validateToken(@RequestHeader(value = "Authorization", required = false) authHeader: String?): ResponseEntity<*> {
+        val token = authHeader?.removePrefix("Bearer ")?.trim()
+        if (token.isNullOrEmpty() || !jwtUtil.validateToken(token)) {
+            return ResponseEntity.status(401).body(ApiResponse(false, "Phiên đăng nhập đã hết hạn hoặc máy chủ đã khởi động lại!"))
+        }
+        val email = jwtUtil.extractEmail(token)
+        return ResponseEntity.ok(mapOf("valid" to true, "email" to email))
     }
 }

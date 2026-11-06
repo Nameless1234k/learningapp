@@ -13,17 +13,19 @@ class SearchScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Màu nền xám nhạt đồng bộ toàn ứng dụng
+      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Tra cứu',
           style: TextStyle(
-            color: Color(0xFF15193B),
+            color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF15193B),
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
         elevation: 0,
         centerTitle: false,
       ),
@@ -46,31 +48,33 @@ class SearchScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF15193B).withOpacity(0.06),
+                    color: isDark
+                        ? const Color(0xFF334155).withValues(alpha: 0.5)
+                        : const Color(0xFF15193B).withOpacity(0.06),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.search_rounded,
                     size: 64,
-                    color: Color(0xFF15193B),
+                    color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF15193B),
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'Tính năng Tra cứu',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF15193B),
+                    color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF15193B),
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Hệ thống đang phát triển tính năng tra cứu khái niệm và kiến thức lý luận chính trị.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.black54,
+                    color: isDark ? const Color(0xFF94A3B8) : Colors.black54,
                     height: 1.4,
                   ),
                 ),

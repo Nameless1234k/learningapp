@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
+import '../models/home_dashboard_model.dart';
+import '../widgets/app_bottom_nav_bar.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
 import 'document_list_screen.dart';
 import 'practice_screen.dart';
 import 'profile_screen.dart';
+import 'subject_detail_screen.dart';
 
 // =========================================================================================
 // [TÊN FILE: main_navigation_screen.dart]
 // [VỊ TRÍ]: lib/screens/main_navigation_screen.dart
-// [MỤC ĐÍCH]: Màn hình khung chứa Bottom Navigation Bar chính của toàn bộ ứng dụng.
-// - Tạo thanh điều hướng dưới đáy (Bottom Bar) chuẩn theo thiết kế Adobe XD (Screen 9, 14, 15)
-// - Gồm 5 Tab: Trang chủ, Tra cứu, Tài liệu, Luyện tập, Cá nhân
-// - Khi nhấn vào tab nào thì chuyển trang tương ứng
-// - Mặc định khi vừa đăng nhập vào thì hiển thị TAB TRANG CHỦ (index = 0) theo yêu cầu.
+// [MÔ HÌNH KIẾN TRÚC]: MVC (Màn hình điều phối Navigation chính):
+// - Quản lý IndexedStack cho 5 màn hình tương ứng 5 Tabs.
+// - Tái sử dụng View Component AppBottomNavBar.
+// - Tự động đồng bộ và nạp lại ngầm dữ liệu Trang chủ và Danh sách tài liệu khi chuyển tab.
+// - Luồng Tài liệu chuẩn (Môn học -> Bài học -> PDF):
+//   Khi bấm "Vào học" / "Tiếp tục học" từ Trang chủ, ứng dụng chuyển sang Tab Tài liệu và
+//   mở Bài học, để khi học viên thoát PDF sẽ ra Bài học, và thoát Bài học sẽ ra đúng Môn học!
 // =========================================================================================
 
 class MainNavigationScreen extends StatefulWidget {
-  final int initialIndex; // Cho phép truyền index ban đầu (mặc định là 0: Trang chủ)
+  final int initialIndex;
 
   const MainNavigationScreen({
     super.key,
@@ -28,167 +33,104 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class MainNavigationScreenState extends State<MainNavigationScreen> {
-  // Biến lưu chỉ số trang hiện tại đang được chọn (0: Trang chủ, 1: Tra cứu, 2: Tài liệu, 3: Luyện tập, 4: Cá nhân)
   late int _currentIndex;
+
+  /// GlobalKey quản lý state màn hình Trang chủ để kích hoạt làm mới Phiên học hôm nay khi chuyển tab
+  final GlobalKey<HomeScreenState> homeScreenKey = GlobalKey<HomeScreenState>();
 
   /// GlobalKey quản lý state màn hình Danh sách tài liệu để kích hoạt làm mới khi chuyển tab
   final GlobalKey<DocumentListScreenState> documentListKey = GlobalKey<DocumentListScreenState>();
 
-  // Danh sách các màn hình tương ứng với 5 Tab
   late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
-    // Gán index mặc định (0: Trang chủ khi vừa đăng nhập vào)
     _currentIndex = widget.initialIndex;
 
-    // Khởi tạo danh sách 5 trang
     _screens = [
-      // Tab 0: Trang chủ (kèm callback chuyển tab khi bấm banner)
+      // Tab 0: Trang chủ (kèm callback chuyển sang luồng Tài liệu khi học)
       HomeScreen(
+        key: homeScreenKey,
         onSwitchTab: _switchToTab,
+        onOpenSessionInDocumentTab: _openTodaySessionInDocumentTab,
       ),
-      // Tab 1: Tra cứu (Trang trắng placeholder)
+      // Tab 1: Tra cứu
       const SearchScreen(),
-      // Tab 2: Tài liệu (Screen 9 theo Adobe XD & Đặc tả Use Case)
+      // Tab 2: Tài liệu (Screen 9 - Danh sách môn học)
       DocumentListScreen(key: documentListKey),
-      // Tab 3: Luyện tập (Trang trắng placeholder)
+      // Tab 3: Luyện tập
       const PracticeScreen(),
-      // Tab 4: Cá nhân (Trang trắng có nút Đăng xuất tạm thời)
+      // Tab 4: Cá nhân
       const ProfileScreen(),
     ];
   }
 
-  // Hàm chuyển đổi tab khi người dùng bấm vào một mục ở Bottom Bar
-  void _onTabTapped(int index) {
-    _switchToTab(index);
-  }
-
   /// Chuyển tab và tự động đồng bộ/làm mới dữ liệu mới nhất
   void _switchToTab(int index) {
+    final prevIndex = _currentIndex;
     setState(() {
       _currentIndex = index;
     });
-    _triggerTabRefresh(index);
+    _triggerTabRefresh(prevIndex, index);
   }
 
   /// Kích hoạt làm mới ngầm khi chuyển vào tab tương ứng
-  void _triggerTabRefresh(int index) {
-    if (index == 2) {
+  void _triggerTabRefresh(int prevIndex, int newIndex) {
+    // Nếu chuyển từ Tab 2 (Tài liệu) sang bất kỳ tab nào, hoặc chuyển vào Tab 0 (Trang chủ):
+    // Tự động làm mới ngầm Phiên học hôm nay để lưu và phản ánh vị trí đọc mới nhất
+    if (prevIndex == 2 || newIndex == 0) {
+      homeScreenKey.currentState?.refreshDashboard();
+    }
+    if (newIndex == 2) {
       // Khi học viên bấm vào Tab 2 (Tài liệu): tự động làm mới ngầm dữ liệu danh sách môn học mới nhất
       documentListKey.currentState?.refresh(silent: true);
     }
   }
 
+  /// Khi học viên bấm "Vào học" hoặc "Tiếp tục học" từ Trang chủ:
+  /// Chuyển sang luồng Tài liệu (Tab 2 - Môn học), sau đó mở Trang bài học (SubjectDetailScreen)
+  /// để khi thoát PDF -> sẽ ra đúng Trang bài học, và khi thoát Bài học -> sẽ ra đúng Trang môn học!
+  void _openTodaySessionInDocumentTab(TodaySessionModel session) {
+    // 1. Chuyển sang Tab 2 (Tài liệu / Danh sách môn học)
+    _switchToTab(2);
+
+    // 2. Mở SubjectDetailScreen lên trên màn hình Môn học
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SubjectDetailScreen(
+          subjectId: session.subjectId,
+          subjectName: session.subjectName,
+          initialOpenLessonId: session.lessonId,
+          initialOpenPdfUrl: session.pdfUrl,
+          initialOpenTitle: 'Bài ${session.lessonNo}. ${session.lessonTitle}',
+          initialOpenLastPosition: session.lastPosition,
+          initialOpenReadingSeconds: session.readingSeconds,
+          initialOpenIsRead: session.status == 'COMPLETED' || session.progressPercent >= 100.0,
+        ),
+      ),
+    ).then((_) {
+      // Khi học viên bấm nút "<--" trên SubjectDetailScreen để quay về DocumentListScreen (Môn học):
+      // Tự động làm mới ngầm cả Trang chủ và Danh sách tài liệu
+      homeScreenKey.currentState?.refreshDashboard();
+      documentListKey.currentState?.refresh(silent: true);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // IndexedStack giúp giữ nguyên trạng thái (State) của các tab, không bị tải lại từ đầu mỗi khi chuyển tab
+      // IndexedStack giúp giữ nguyên trạng thái (State) của các tab, không bị tải lại từ đầu
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
 
-      // Thanh điều hướng đáy (Bottom Navigation Bar) thiết kế chuẩn theo Adobe XD
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(
-              color: Color(0xFFE5E7EB), // Đường kẻ viền mỏng phía trên Bottom Bar
-              width: 1.0,
-            ),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                // 1. Tab Trang chủ
-                _buildNavItem(
-                  index: 0,
-                  icon: Icons.home_outlined,
-                  activeIcon: Icons.home_rounded,
-                  label: 'Trang chủ',
-                ),
-
-                // 2. Tab Tra cứu
-                _buildNavItem(
-                  index: 1,
-                  icon: Icons.search_rounded,
-                  activeIcon: Icons.search_rounded,
-                  label: 'Tra cứu',
-                ),
-
-                // 3. Tab Tài liệu (Screen 9)
-                _buildNavItem(
-                  index: 2,
-                  icon: Icons.menu_book_outlined,
-                  activeIcon: Icons.menu_book_rounded,
-                  label: 'Tài liệu',
-                ),
-
-                // 4. Tab Luyện tập
-                _buildNavItem(
-                  index: 3,
-                  icon: Icons.checklist_outlined,
-                  activeIcon: Icons.checklist_rounded,
-                  label: 'Luyện tập',
-                ),
-
-                // 5. Tab Cá nhân
-                _buildNavItem(
-                  index: 4,
-                  icon: Icons.person_outline_rounded,
-                  activeIcon: Icons.person_rounded,
-                  label: 'Cá nhân',
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Widget con tạo từng nút bấm điều hướng trên Bottom Bar
-  Widget _buildNavItem({
-    required int index,
-    required IconData icon,
-    required IconData activeIcon,
-    required String label,
-  }) {
-    final bool isSelected = _currentIndex == index;
-    // Màu sắc theo Adobe XD: xanh tím than đậm (#15193B) khi chọn, xám (#8E8E93) khi không chọn
-    final Color itemColor = isSelected ? const Color(0xFF15193B) : const Color(0xFF8E8E93);
-
-    return InkWell(
-      onTap: () => _onTabTapped(index),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? activeIcon : icon,
-              color: itemColor,
-              size: 26,
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: itemColor,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
+      // Thanh điều hướng đáy tái sử dụng (AppBottomNavBar)
+      bottomNavigationBar: AppBottomNavBar(
+        currentIndex: _currentIndex,
+        onTabSelected: _switchToTab,
       ),
     );
   }

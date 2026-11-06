@@ -15,10 +15,10 @@ import '../services/user_session.dart';
 // 2. Tự động tạm dừng đồng hồ khi học viên thu nhỏ/ẩn ứng dụng (tránh gian lận thời gian).
 // 3. Tự động nhận diện trang đang đọc qua 'onPageChanged'.
 // 4. Tự động đánh dấu "ĐÃ ĐỌC" (COMPLETED) khi:
-//    - Học viên đọc đủ ngưỡng 30 giây (seconds >= 30), HOẶC
+//    - Học viên đọc đủ ngưỡng 60 giây (seconds >= 60), HOẶC
 //    - Học viên lướt tới trang cuối cùng của tài liệu (pageNumber >= totalPages).
 // 5. Tự động gửi kết quả tiến độ ngầm về Backend mà không làm gián đoạn việc đọc.
-// 6. Tự động chốt phiên và đồng bộ khi học viên bấm nút 'X' hoặc vuốt thoát.
+// 6. Chốt phiên đọc và gửi gói tin tiến độ hoàn tất TRƯỚC KHI đóng màn hình (tránh race condition).
 // =========================================================================================
 
 class PdfViewerScreen extends StatefulWidget {
@@ -68,6 +68,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> with WidgetsBindingOb
   bool _hasFinalSynced = false;
   int _accumulatedSeconds = 0;    // Thời gian đọc các lần trước cộng dồn
   int _maxPageReached = 1;        // Trang đọc lớn nhất từng đạt được
+  bool _canPop = false;           // Cờ cho phép thoát PopScope an toàn
+  bool _isPopping = false;        // Ngăn chặn bấm thoát nhiều lần cùng lúc
 
   @override
   void initState() {
@@ -112,7 +114,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> with WidgetsBindingOb
     _tickerTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
 
-      // TỔNG THỜI GIAN ĐÃ ĐỌC (CỘNG DỒN) = Thời gian các lần trước + Thời gian phiên đọc này
       final totalElapsedSeconds = _accumulatedSeconds + _readingStopwatch.elapsed.inSeconds;
 
       // TIÊU CHÍ TỰ ĐỘNG ĐÁNH DẤU HOÀN THÀNH CHẠY NGẦM (THRESHOLD = 60 GIÂY)
@@ -157,23 +158,27 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> with WidgetsBindingOb
   }
 
   // Gửi ngầm tiến độ về Backend
-  void _autoSync({bool isCompletedThreshold = false}) {
+  Future<void> _autoSync({bool isCompletedThreshold = false}) async {
     if (widget.lessonId == null) return;
 
     final totalSeconds = _accumulatedSeconds + _readingStopwatch.elapsed.inSeconds;
     final effectiveUserId = widget.userId ?? UserSession.currentUserId;
+    // Lấy vị trí trang thực tế mà người dùng đang dừng
+    final currentPage = (_pdfViewerController.pageNumber > 0)
+        ? _pdfViewerController.pageNumber
+        : _maxPageReached;
 
-    _subjectController.syncLessonProgress(
+    await _subjectController.syncLessonProgress(
       lessonId: widget.lessonId!,
       userId: effectiveUserId,
-      pageNumber: _maxPageReached,
+      pageNumber: currentPage,
       totalPages: _totalPages,
       secondsSpent: totalSeconds,
     );
   }
 
-  // Chốt phiên đọc và gửi gói tin cuối cùng khi người dùng thoát
-  void _finishAndSyncProgress() {
+  // Chốt phiên đọc và gửi gói tin cuối cùng khi người dùng thoát (Awaited để tránh race condition)
+  Future<void> _finishAndSyncProgress() async {
     if (_hasFinalSynced) return;
     _hasFinalSynced = true;
 
@@ -181,7 +186,21 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> with WidgetsBindingOb
     if (_readingStopwatch.isRunning) {
       _readingStopwatch.stop();
     }
-    _autoSync();
+    await _autoSync();
+  }
+
+  /// Thoát an toàn: Đảm bảo đồng bộ xong trước khi Pop và tránh vòng lặp pop
+  Future<void> _handleExit() async {
+    if (_isPopping) return;
+    _isPopping = true;
+
+    await _finishAndSyncProgress();
+    if (mounted) {
+      setState(() {
+        _canPop = true;
+      });
+      Navigator.of(context).pop(_isCompleted);
+    }
   }
 
   // Hàm tải lại tài liệu khi nhấn nút "Thử lại"
@@ -197,56 +216,57 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> with WidgetsBindingOb
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: true,
-      onPopInvokedWithResult: (didPop, result) {
-        _finishAndSyncProgress();
+      canPop: _canPop,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _handleExit();
       },
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
-        // 1. THANH TIÊU ĐỀ APPBAR: Hiển thị tên bài học sạch sẽ (toàn bộ đếm giờ chạy ngầm)
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF15193B),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          title: Text(
-            widget.title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+      child: Builder(
+        builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return Scaffold(
+            backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF5F7FA),
+            // 1. THANH TIÊU ĐỀ APPBAR
+            appBar: AppBar(
+              backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFF15193B),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              title: Text(
+                widget.title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              // Nút Đóng 'X' ở góc trái: Lưu tiến độ đồng bộ rồi mới pop
+              leading: IconButton(
+                icon: const Icon(Icons.close_rounded, size: 26),
+                tooltip: 'Đóng tài liệu',
+                onPressed: _handleExit,
+              ),
+              // Các công cụ Zoom In / Zoom Out
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.zoom_in_rounded),
+                  tooltip: 'Phóng to',
+                  onPressed: () {
+                    _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel + 0.25;
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.zoom_out_rounded),
+                  tooltip: 'Thu nhỏ',
+                  onPressed: () {
+                    if (_pdfViewerController.zoomLevel > 1.0) {
+                      _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel - 0.25;
+                    }
+                  },
+                ),
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          // Nút Đóng 'X' ở góc trái theo chuẩn giao diện
-          leading: IconButton(
-            icon: const Icon(Icons.close_rounded, size: 26),
-            tooltip: 'Đóng tài liệu',
-            onPressed: () {
-              _finishAndSyncProgress();
-              Navigator.pop(context, _isCompleted);
-            },
-          ),
-          // Các công cụ Zoom In / Zoom Out
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.zoom_in_rounded),
-              tooltip: 'Phóng to',
-              onPressed: () {
-                _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel + 0.25;
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.zoom_out_rounded),
-              tooltip: 'Thu nhỏ',
-              onPressed: () {
-                if (_pdfViewerController.zoomLevel > 1.0) {
-                  _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel - 0.25;
-                }
-              },
-            ),
-          ],
-        ),
 
         // 2. PHẦN THÂN: Trình đọc PDF Syncfusion với cơ chế theo dõi tự động
         body: Stack(
@@ -407,7 +427,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> with WidgetsBindingOb
               ),
           ],
         ),
-      ),
-    );
-  }
+      );
+    },
+  ),
+);
+}
 }

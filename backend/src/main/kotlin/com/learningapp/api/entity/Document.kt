@@ -43,6 +43,10 @@ data class Document(
     @Column(name = "file_path", columnDefinition = "TEXT")
     var filePath: String? = null,
 
+    // Tổng số trang của tài liệu PDF (tự động đếm và cập nhật)
+    @Column(name = "total_pages")
+    var totalPages: Int? = null,
+
     // Thời điểm tải lên hệ thống
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),

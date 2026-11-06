@@ -57,7 +57,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
             (widget.textInputAction == TextInputAction.next
                 ? (_) => FocusScope.of(context).nextFocus()
                 : null),
-        style: const TextStyle(fontSize: 16),
+        style: const TextStyle(
+          fontSize: 16,
+          color: Color(0xFF15193B), // Luôn hiển thị chữ màu tối rõ ràng, chống bị chữ trắng khi bật Dark Mode
+        ),
         onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
         decoration: InputDecoration(
           hintText: widget.hintText,
