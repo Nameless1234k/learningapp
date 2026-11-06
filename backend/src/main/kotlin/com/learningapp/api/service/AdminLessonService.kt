@@ -81,10 +81,22 @@ class AdminLessonService(
     }
 
     /**
-     * Thêm bài học mới kèm tải lên file PDF (nếu có)
+     * Chuẩn hóa tiêu đề bài học hiển thị theo định dạng: "Bài {lessonNo}: {Tên nội dung}"
+     */
+    fun formatLessonTitle(lessonNo: Int, rawTitle: String): String {
+        val cleanTitle = rawTitle.trim().replaceFirst(Regex("^Bài\\s*\\d+\\s*[:\\.\\-]?\\s*", RegexOption.IGNORE_CASE), "").trim()
+        return if (cleanTitle.isNotEmpty()) "Bài $lessonNo: $cleanTitle" else "Bài $lessonNo"
+    }
+
+    /**
+     * Thêm bài học mới kèm số thứ tự bài (lessonNo) và tải lên file PDF (nếu có)
      */
     @Transactional
-    fun createLesson(title: String, subjectId: UUID, file: MultipartFile?): AdminLessonResponse {
+    fun createLesson(title: String, subjectId: UUID, lessonNo: Int?, file: MultipartFile?): AdminLessonResponse {
+        if (lessonNo == null || lessonNo <= 0) {
+            throw IllegalArgumentException("Số thứ tự bài học phải là số nguyên dương (> 0)!")
+        }
+
         val trimmedTitle = title.trim()
         if (trimmedTitle.isEmpty()) {
             throw IllegalArgumentException("Vui lòng nhập tên bài học!")
@@ -101,15 +113,13 @@ class AdminLessonService(
             savedDoc = handleFileUpload(file, subject.code, subject.id!!)
         }
 
-        // Tự động tính số thứ tự bài học tiếp theo trong môn
-        val lastLesson = lessonRepository.findTopBySubjectIdOrderByLessonNoDesc(subjectId)
-        val nextLessonNo = (lastLesson?.lessonNo ?: 0) + 1
+        val formattedTitle = formatLessonTitle(lessonNo, trimmedTitle)
 
         val newLesson = Lesson(
             subjectId = subjectId,
             documentId = savedDoc?.id,
-            lessonNo = nextLessonNo,
-            title = trimmedTitle
+            lessonNo = lessonNo,
+            title = formattedTitle
         )
         val savedLesson = lessonRepository.save(newLesson)
 
@@ -140,6 +150,7 @@ class AdminLessonService(
         id: UUID,
         title: String?,
         subjectId: UUID?,
+        lessonNo: Int?,
         file: MultipartFile?,
         removeFile: Boolean? = false
     ): AdminLessonResponse {
@@ -147,12 +158,21 @@ class AdminLessonService(
             IllegalArgumentException("Không tìm thấy bài học với ID: $id")
         }
 
+        if (lessonNo != null) {
+            if (lessonNo <= 0) {
+                throw IllegalArgumentException("Số thứ tự bài học phải là số nguyên dương (> 0)!")
+            }
+            lesson.lessonNo = lessonNo
+        }
+
         if (title != null) {
             val trimmedTitle = title.trim()
             if (trimmedTitle.isEmpty()) {
                 throw IllegalArgumentException("Vui lòng nhập tên bài học!")
             }
-            lesson.title = trimmedTitle
+            lesson.title = formatLessonTitle(lesson.lessonNo, trimmedTitle)
+        } else if (lessonNo != null) {
+            lesson.title = formatLessonTitle(lesson.lessonNo, lesson.title)
         }
 
         if (subjectId != null) {

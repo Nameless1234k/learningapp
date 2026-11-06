@@ -9,6 +9,7 @@ class LessonDialog extends StatefulWidget {
   final Future<void> Function({
     required String title,
     required String subjectId,
+    required int lessonNo,
     List<int>? fileBytes,
     String? fileName,
     bool removeFile,
@@ -28,6 +29,7 @@ class LessonDialog extends StatefulWidget {
     required Future<void> Function({
       required String title,
       required String subjectId,
+      required int lessonNo,
       List<int>? fileBytes,
       String? fileName,
       bool removeFile,
@@ -50,6 +52,7 @@ class LessonDialog extends StatefulWidget {
 
 class _LessonDialogState extends State<LessonDialog> {
   final _formKey = GlobalKey<FormState>();
+  late TextEditingController _lessonNoController;
   late TextEditingController _titleController;
   String? _selectedSubjectId;
   String? _selectedFileName;
@@ -65,7 +68,18 @@ class _LessonDialogState extends State<LessonDialog> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.initialLesson?.title ?? '');
+    final int? initialLessonNo = widget.initialLesson?.lessonNo;
+    _lessonNoController = TextEditingController(
+      text: initialLessonNo != null && initialLessonNo > 0 ? initialLessonNo.toString() : '',
+    );
+
+    String cleanInitialTitle(String title) {
+      return title.replaceFirst(RegExp(r'^Bài\s*\d+\s*[:.\-]?\s*', caseSensitive: false), '').trim();
+    }
+
+    _titleController = TextEditingController(
+      text: widget.initialLesson != null ? cleanInitialTitle(widget.initialLesson!.title) : '',
+    );
     _selectedSubjectId = widget.initialLesson?.subjectId;
     if (_selectedSubjectId == null && widget.subjects.isNotEmpty) {
       _selectedSubjectId = widget.subjects.first.id;
@@ -75,6 +89,7 @@ class _LessonDialogState extends State<LessonDialog> {
 
   @override
   void dispose() {
+    _lessonNoController.dispose();
     _titleController.dispose();
     super.dispose();
   }
@@ -126,11 +141,16 @@ class _LessonDialogState extends State<LessonDialog> {
     });
 
     try {
-      final title = _titleController.text.trim();
+      final lessonNo = int.parse(_lessonNoController.text.trim());
+      final rawTitle = _titleController.text.trim();
+      final cleanTitle = rawTitle.replaceFirst(RegExp(r'^Bài\s*\d+\s*[:.\-]?\s*', caseSensitive: false), '').trim();
+      final formattedTitle = cleanTitle.isNotEmpty ? 'Bài $lessonNo: $cleanTitle' : 'Bài $lessonNo';
+
       final bool removeFile = isEdit && _removedExistingFile && _selectedFileBytes == null;
       await widget.onSave(
-        title: title,
+        title: formattedTitle,
         subjectId: _selectedSubjectId!,
+        lessonNo: lessonNo,
         fileBytes: _selectedFileBytes,
         fileName: _selectedFileName,
         removeFile: removeFile,
@@ -186,7 +206,64 @@ class _LessonDialogState extends State<LessonDialog> {
                 ),
               ],
 
-              // Trường 1: Tên bài học
+              // Trường 1: Số thứ tự bài học với tiền tố hiển thị "Bài [   ]"
+              const Text(
+                'Số thứ tự bài học',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E2238)),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _lessonNoController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 10),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Text(
+                          'Bài',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E2238)),
+                        ),
+                        SizedBox(width: 8),
+                        Text('|', style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                  prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                  hintText: 'Nhập số thứ tự (vd: 1, 2, 3...)',
+                  hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF1E2238), width: 1.5),
+                  ),
+                ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Vui lòng nhập số thứ tự bài học';
+                  }
+                  if (!RegExp(r'^[0-9]+$').hasMatch(val.trim())) {
+                    return 'Số thứ tự bài học phải là số nguyên dương (> 0)';
+                  }
+                  final n = int.tryParse(val.trim());
+                  if (n == null || n <= 0) {
+                    return 'Số thứ tự bài học phải là số nguyên dương (> 0)';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Trường 2: Tên bài học
               const Text(
                 'Tên bài học',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E2238)),
@@ -195,6 +272,8 @@ class _LessonDialogState extends State<LessonDialog> {
               TextFormField(
                 controller: _titleController,
                 decoration: InputDecoration(
+                  hintText: 'Nhập tên nội dung bài học (vd: Khái lược về Triết học...)',
+                  hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),

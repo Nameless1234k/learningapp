@@ -51,10 +51,11 @@ class _AdminDocumentScreenState extends State<AdminDocumentScreen> {
       LessonDialog.show(
         context,
         subjects: _controller.subjects,
-        onSave: ({required title, required subjectId, fileBytes, fileName, removeFile = false}) async {
+        onSave: ({required title, required subjectId, required lessonNo, fileBytes, fileName, removeFile = false}) async {
           await _controller.createLesson(
             title: title,
             subjectId: subjectId,
+            lessonNo: lessonNo,
             fileBytes: fileBytes,
             fileName: fileName,
             currentKeyword: _searchController.text,
@@ -87,11 +88,12 @@ class _AdminDocumentScreenState extends State<AdminDocumentScreen> {
         context,
         subjects: _controller.subjects,
         initialLesson: lesson,
-        onSave: ({required title, required subjectId, fileBytes, fileName, removeFile = false}) async {
+        onSave: ({required title, required subjectId, required lessonNo, fileBytes, fileName, removeFile = false}) async {
           await _controller.updateLesson(
             id: lesson.id,
             title: title,
             subjectId: subjectId,
+            lessonNo: lessonNo,
             fileBytes: fileBytes,
             fileName: fileName,
             removeFile: removeFile,

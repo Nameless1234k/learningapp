@@ -164,12 +164,14 @@ class AdminApiService {
   Future<AdminLessonModel> createLesson({
     required String title,
     required String subjectId,
+    required int lessonNo,
     List<int>? fileBytes,
     String? fileName,
   }) async {
     final request = http.MultipartRequest('POST', Uri.parse(ApiEndpoints.adminLessonsAPI));
     request.fields['title'] = title.trim();
     request.fields['subjectId'] = subjectId.trim();
+    request.fields['lessonNo'] = lessonNo.toString();
 
     if (fileBytes != null && fileName != null) {
       request.files.add(
@@ -192,6 +194,7 @@ class AdminApiService {
     required String id,
     String? title,
     String? subjectId,
+    int? lessonNo,
     List<int>? fileBytes,
     String? fileName,
     bool removeFile = false,
@@ -199,6 +202,7 @@ class AdminApiService {
     final request = http.MultipartRequest('PUT', Uri.parse('${ApiEndpoints.adminLessonsAPI}/$id'));
     if (title != null) request.fields['title'] = title.trim();
     if (subjectId != null) request.fields['subjectId'] = subjectId.trim();
+    if (lessonNo != null) request.fields['lessonNo'] = lessonNo.toString();
     if (removeFile) {
       request.fields['removeFile'] = 'true';
     } else if (fileBytes != null && fileName != null) {

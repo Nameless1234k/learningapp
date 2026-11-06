@@ -202,7 +202,7 @@ void main() {
                     context,
                     initialLesson: existingLesson,
                     subjects: [],
-                    onSave: ({required title, required subjectId, fileBytes, fileName, removeFile = false}) async {},
+                    onSave: ({required title, required subjectId, required lessonNo, fileBytes, fileName, removeFile = false}) async {},
                   );
                 },
                 child: const Text('Open Edit Lesson Dialog'),
@@ -270,7 +270,7 @@ void main() {
                   LessonDialog.show(
                     context,
                     subjects: [],
-                    onSave: ({required title, required subjectId, fileBytes, fileName, removeFile = false}) async {},
+                    onSave: ({required title, required subjectId, required lessonNo, fileBytes, fileName, removeFile = false}) async {},
                   );
                 },
                 child: const Text('Open Lesson Dialog'),
@@ -288,6 +288,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Phải báo lỗi validation
+      expect(find.text('Vui lòng nhập số thứ tự bài học'), findsOneWidget);
       expect(find.text('Vui lòng nhập tên bài học'), findsOneWidget);
       expect(find.text('Vui lòng chọn môn học'), findsOneWidget);
     });

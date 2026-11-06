@@ -45,9 +45,23 @@ class AdminLessonServiceTest {
     @DisplayName("TC01 - Báo lỗi khi tên bài học để trống")
     fun testCreateLesson_EmptyTitle_ThrowsException() {
         val ex = assertThrows(IllegalArgumentException::class.java) {
-            adminLessonService.createLesson("   ", sampleSubject.id!!, null)
+            adminLessonService.createLesson("   ", sampleSubject.id!!, 1, null)
         }
         assertEquals("Vui lòng nhập tên bài học!", ex.message)
+    }
+
+    @Test
+    @DisplayName("TC01b - Báo lỗi khi số thứ tự bài học (lessonNo) <= 0 hoặc null")
+    fun testCreateLesson_InvalidLessonNo_ThrowsException() {
+        val ex1 = assertThrows(IllegalArgumentException::class.java) {
+            adminLessonService.createLesson("Bài 1", sampleSubject.id!!, null, null)
+        }
+        assertEquals("Số thứ tự bài học phải là số nguyên dương (> 0)!", ex1.message)
+
+        val ex2 = assertThrows(IllegalArgumentException::class.java) {
+            adminLessonService.createLesson("Bài 1", sampleSubject.id!!, 0, null)
+        }
+        assertEquals("Số thứ tự bài học phải là số nguyên dương (> 0)!", ex2.message)
     }
 
     @Test
@@ -60,7 +74,7 @@ class AdminLessonServiceTest {
         `when`(mockFile.originalFilename).thenReturn("tailieu.docx")
 
         val ex = assertThrows(IllegalArgumentException::class.java) {
-            adminLessonService.createLesson("Bài 1", sampleSubject.id!!, mockFile)
+            adminLessonService.createLesson("Bài 1", sampleSubject.id!!, 1, mockFile)
         }
         assertEquals("Chỉ chấp nhận file định dạng PDF!", ex.message)
     }
@@ -77,16 +91,15 @@ class AdminLessonServiceTest {
         `when`(mockFile.size).thenReturn(201L * 1024 * 1024)
 
         val ex = assertThrows(IllegalArgumentException::class.java) {
-            adminLessonService.createLesson("Bài 1", sampleSubject.id!!, mockFile)
+            adminLessonService.createLesson("Bài 1", sampleSubject.id!!, 1, mockFile)
         }
         assertEquals("chỉ chấp nhận file PDF tối đa 200 MB", ex.message)
     }
 
     @Test
-    @DisplayName("TC04 - Tạo bài học thành công không kèm file")
+    @DisplayName("TC04 - Tạo bài học thành công không kèm file và tự động chuẩn hóa định dạng 'Bài {lessonNo}: {title}'")
     fun testCreateLesson_WithoutFile_Success() {
         `when`(subjectRepository.findById(sampleSubject.id!!)).thenReturn(Optional.of(sampleSubject))
-        `when`(lessonRepository.findTopBySubjectIdOrderByLessonNoDesc(sampleSubject.id!!)).thenReturn(null)
 
         val newLesson = Lesson(
             id = UUID.randomUUID(),
@@ -97,7 +110,7 @@ class AdminLessonServiceTest {
         )
         `when`(lessonRepository.save(org.mockito.ArgumentMatchers.any(Lesson::class.java))).thenReturn(newLesson)
 
-        val result = adminLessonService.createLesson("Bài 1: Khái lược Triết học", sampleSubject.id!!, null)
+        val result = adminLessonService.createLesson("Khái lược Triết học", sampleSubject.id!!, 1, null)
 
         assertNotNull(result)
         assertEquals("Bài 1: Khái lược Triết học", result.title)

@@ -53,9 +53,9 @@ class AdminLessonControllerTest {
     @DisplayName("TC02 - Endpoint thêm bài học trả về HTTP 200")
     fun testCreateLesson_Success() {
         val subjectId = sampleLesson.subjectId
-        `when`(adminLessonService.createLesson("Bài 1 mới", subjectId, null)).thenReturn(sampleLesson)
+        `when`(adminLessonService.createLesson("Bài 1 mới", subjectId, 1, null)).thenReturn(sampleLesson)
 
-        val response = adminLessonController.createLesson("Bài 1 mới", subjectId, null)
+        val response = adminLessonController.createLesson("Bài 1 mới", subjectId, 1, null)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(sampleLesson.title, response.body!!.title)
@@ -65,10 +65,10 @@ class AdminLessonControllerTest {
     @DisplayName("TC03 - Endpoint sửa bài học trả về HTTP 200")
     fun testUpdateLesson_Success() {
         val updatedLesson = sampleLesson.copy(title = "Bài 1 đã cập nhật")
-        `when`(adminLessonService.updateLesson(sampleLesson.id, "Bài 1 đã cập nhật", null, null))
+        `when`(adminLessonService.updateLesson(sampleLesson.id, "Bài 1 đã cập nhật", null, 1, null, false))
             .thenReturn(updatedLesson)
 
-        val response = adminLessonController.updateLesson(sampleLesson.id, "Bài 1 đã cập nhật", null, null)
+        val response = adminLessonController.updateLesson(sampleLesson.id, "Bài 1 đã cập nhật", null, 1, null, false)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals("Bài 1 đã cập nhật", response.body!!.title)

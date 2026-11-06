@@ -200,6 +200,7 @@ class AdminDocumentController extends ChangeNotifier {
   Future<void> createLesson({
     required String title,
     required String subjectId,
+    required int lessonNo,
     List<int>? fileBytes,
     String? fileName,
     String? currentKeyword,
@@ -207,6 +208,7 @@ class AdminDocumentController extends ChangeNotifier {
     await _apiService.createLesson(
       title: title,
       subjectId: subjectId,
+      lessonNo: lessonNo,
       fileBytes: fileBytes,
       fileName: fileName,
     );
@@ -218,6 +220,7 @@ class AdminDocumentController extends ChangeNotifier {
     required String id,
     required String title,
     required String subjectId,
+    required int lessonNo,
     List<int>? fileBytes,
     String? fileName,
     bool removeFile = false,
@@ -227,6 +230,7 @@ class AdminDocumentController extends ChangeNotifier {
       id: id,
       title: title,
       subjectId: subjectId,
+      lessonNo: lessonNo,
       fileBytes: fileBytes,
       fileName: fileName,
       removeFile: removeFile,

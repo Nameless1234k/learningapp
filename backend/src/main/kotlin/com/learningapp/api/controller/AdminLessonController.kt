@@ -29,9 +29,10 @@ class AdminLessonController(
     fun createLesson(
         @RequestParam("title") title: String,
         @RequestParam("subjectId") subjectId: UUID,
+        @RequestParam(value = "lessonNo", required = false) lessonNo: Int?,
         @RequestParam(value = "file", required = false) file: MultipartFile?
     ): ResponseEntity<AdminLessonResponse> {
-        val response = adminLessonService.createLesson(title, subjectId, file)
+        val response = adminLessonService.createLesson(title, subjectId, lessonNo, file)
         return ResponseEntity.ok(response)
     }
 
@@ -40,10 +41,11 @@ class AdminLessonController(
         @PathVariable id: UUID,
         @RequestParam(value = "title", required = false) title: String?,
         @RequestParam(value = "subjectId", required = false) subjectId: UUID?,
+        @RequestParam(value = "lessonNo", required = false) lessonNo: Int?,
         @RequestParam(value = "file", required = false) file: MultipartFile?,
         @RequestParam(value = "removeFile", required = false) removeFile: Boolean? = false
     ): ResponseEntity<AdminLessonResponse> {
-        val response = adminLessonService.updateLesson(id, title, subjectId, file, removeFile)
+        val response = adminLessonService.updateLesson(id, title, subjectId, lessonNo, file, removeFile)
         return ResponseEntity.ok(response)
     }
 
