@@ -7,7 +7,7 @@ import java.util.UUID
 /**
  * Entity ánh xạ bảng user_settings trong PostgreSQL:
  * - Lưu thiết lập giao diện Sáng / Tối (dark_mode)
- * - Lưu trạng thái nhận thông báo (notification_enabled)
+ * - notificationEnabled là transient dự phòng cho tương lai, tương thích hoàn toàn với schema gốc user_settings(user_id, dark_mode, updated_at)
  */
 @Entity
 @Table(name = "user_settings")
@@ -19,9 +19,9 @@ data class UserSetting(
     @Column(name = "dark_mode", nullable = false)
     var darkMode: Boolean = false,
 
-    @Column(name = "notification_enabled", nullable = false)
-    var notificationEnabled: Boolean = true,
-
     @Column(name = "updated_at", nullable = false)
     var updatedAt: LocalDateTime = LocalDateTime.now()
-)
+) {
+    @Transient
+    var notificationEnabled: Boolean = true
+}

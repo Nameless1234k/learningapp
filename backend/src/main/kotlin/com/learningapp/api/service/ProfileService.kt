@@ -110,8 +110,7 @@ class ProfileService(
             userSettingRepository.save(
                 UserSetting(
                     userId = userId,
-                    darkMode = false,
-                    notificationEnabled = true
+                    darkMode = false
                 )
             )
         }
@@ -129,8 +128,7 @@ class ProfileService(
         val setting = userSettingRepository.findById(userId).orElseGet {
             UserSetting(
                 userId = userId,
-                darkMode = false,
-                notificationEnabled = true
+                darkMode = false
             )
         }
 
