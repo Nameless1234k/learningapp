@@ -92,3 +92,18 @@ data class LessonProgressResponse(
     val readingSeconds: Int = 0       // Tổng số giây thực tế đã đọc
 )
 
+/**
+ * Thông tin bài học kế tiếp khi chuyển bài (Next Lesson Navigation)
+ */
+data class NextLessonResponse(
+    val hasNext: Boolean,
+    val isNewSubject: Boolean = false,
+    val lessonId: String? = null,
+    val lessonNo: Int? = null,
+    val title: String? = null,
+    val subjectId: String? = null,
+    val subjectName: String? = null,
+    val pdfUrl: String? = null,
+    val message: String? = null
+)
+

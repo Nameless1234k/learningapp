@@ -74,8 +74,11 @@ class AdminLessonService(
             )
         }
 
+        val sortedSubjects = subjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc()
+        val subjectOrderMap = sortedSubjects.mapIndexed { index, subject -> subject.id!! to index }.toMap()
+
         return mapped.sortedWith(
-            compareBy<AdminLessonResponse> { it.subjectDisplayOrder }
+            compareBy<AdminLessonResponse> { subjectOrderMap[it.subjectId] ?: 9999 }
                 .thenBy { it.lessonNo }
         )
     }

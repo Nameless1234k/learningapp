@@ -44,17 +44,15 @@ class AdminDocumentController extends ChangeNotifier {
   }
 
   void sortLessons(List<AdminLessonModel> list, List<AdminSubjectModel> subs) {
-    final subOrderMap = {for (var s in subs) s.id: s.displayOrder};
+    final subIndexMap = <String, int>{};
+    for (int i = 0; i < subs.length; i++) {
+      subIndexMap[subs[i].id] = i;
+    }
     list.sort((a, b) {
-      final orderA = a.subjectDisplayOrder != 0
-          ? a.subjectDisplayOrder
-          : (subOrderMap[a.subjectId] ?? 999);
-      final orderB = b.subjectDisplayOrder != 0
-          ? b.subjectDisplayOrder
-          : (subOrderMap[b.subjectId] ?? 999);
-
-      if (orderA != orderB) {
-        return orderA.compareTo(orderB);
+      final idxA = subIndexMap[a.subjectId] ?? 9999;
+      final idxB = subIndexMap[b.subjectId] ?? 9999;
+      if (idxA != idxB) {
+        return idxA.compareTo(idxB);
       }
       return a.lessonNo.compareTo(b.lessonNo);
     });

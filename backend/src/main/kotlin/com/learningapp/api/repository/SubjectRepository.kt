@@ -10,11 +10,13 @@ import java.util.UUID
 @Repository
 interface SubjectRepository : JpaRepository<Subject, UUID> {
     fun findAllByOrderByDisplayOrderAsc(): List<Subject>
+    fun findAllByOrderByDisplayOrderAscCreatedAtAsc(): List<Subject>
+    fun findAllByOrderByCreatedAtAsc(): List<Subject>
     fun findByCode(code: String): Subject?
 
     @Query("SELECT s FROM Subject s WHERE " +
            "LOWER(s.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(s.code) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "ORDER BY s.displayOrder ASC")
+           "ORDER BY s.displayOrder ASC, s.createdAt ASC")
     fun searchSubjects(@Param("keyword") keyword: String): List<Subject>
 }

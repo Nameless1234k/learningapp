@@ -43,7 +43,7 @@ class SubjectService(
      * LẤY DANH SÁCH MÔN HỌC KÈM TIẾN ĐỘ HỌC CỦA NGƯỜI DÙNG (Dành cho Screen 9)
      */
     fun getSubjectsWithProgress(userId: UUID?): SubjectListResponse {
-        val subjects = subjectRepository.findAllByOrderByDisplayOrderAsc()
+        val subjects = subjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc()
         if (subjects.isEmpty()) {
             return SubjectListResponse(totalSubjects = 0, readSubjects = 0, subjects = emptyList())
         }
@@ -285,6 +285,72 @@ class SubjectService(
             subjectProgressPercent = subjectPercent,
             readingMinutes = actualReadingMinutes,
             readingSeconds = progress.readingTimeSeconds
+        )
+    }
+
+    /**
+     * Xác định bài học tiếp theo theo thứ tự 2 cấp:
+     * 1. Cùng môn: Tìm bài trong cùng môn (subject_id) có lesson_no > currentLesson.lessonNo
+     * 2. Hết môn: Chuyển sang môn học tiếp theo theo thứ tự tạo môn học và lấy bài đầu tiên của môn đó
+     */
+    fun getNextLesson(lessonId: UUID): NextLessonResponse {
+        val currentLesson = lessonRepository.findById(lessonId).orElseThrow {
+            IllegalArgumentException("Bài học không tồn tại trong hệ thống!")
+        }
+        val currentSubject = subjectRepository.findById(currentLesson.subjectId).orElseThrow {
+            IllegalArgumentException("Môn học liên kết không tồn tại!")
+        }
+
+        // 1. Tìm các bài kế tiếp trong cùng môn có lesson_no > currentLesson.lessonNo
+        val nextInSubject = lessonRepository.findBySubjectIdAndLessonNoGreaterThanOrderByLessonNoAsc(
+            currentLesson.subjectId,
+            currentLesson.lessonNo
+        )
+        if (nextInSubject.isNotEmpty()) {
+            val nextLesson = nextInSubject.first()
+            val pdfUrl = nextLesson.documentId?.let { "/api/documents/$it/file" }
+            return NextLessonResponse(
+                hasNext = true,
+                isNewSubject = false,
+                lessonId = nextLesson.id.toString(),
+                lessonNo = nextLesson.lessonNo,
+                title = nextLesson.title,
+                subjectId = currentSubject.id.toString(),
+                subjectName = currentSubject.name,
+                pdfUrl = pdfUrl,
+                message = "Bài tiếp theo trong môn ${currentSubject.name}"
+            )
+        }
+
+        // 2. Nếu môn hiện tại đã hết bài: Chuyển sang môn tiếp theo theo thứ tự tạo môn
+        val allSubjects = subjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc()
+        val currentSubjectIndex = allSubjects.indexOfFirst { it.id == currentSubject.id }
+        if (currentSubjectIndex >= 0 && currentSubjectIndex + 1 < allSubjects.size) {
+            for (i in (currentSubjectIndex + 1) until allSubjects.size) {
+                val nextSub = allSubjects[i]
+                val subLessons = lessonRepository.findBySubjectIdOrderByLessonNoAsc(nextSub.id!!)
+                if (subLessons.isNotEmpty()) {
+                    val firstLesson = subLessons.first()
+                    val pdfUrl = firstLesson.documentId?.let { "/api/documents/$it/file" }
+                    return NextLessonResponse(
+                        hasNext = true,
+                        isNewSubject = true,
+                        lessonId = firstLesson.id.toString(),
+                        lessonNo = firstLesson.lessonNo,
+                        title = firstLesson.title,
+                        subjectId = nextSub.id.toString(),
+                        subjectName = nextSub.name,
+                        pdfUrl = pdfUrl,
+                        message = "Chuyển sang môn tiếp theo: ${nextSub.name}"
+                    )
+                }
+            }
+        }
+
+        // 3. Đã học xong bài cuối cùng của môn cuối cùng
+        return NextLessonResponse(
+            hasNext = false,
+            message = "Bạn đã hoàn thành tất cả các bài học trong toàn bộ chương trình!"
         )
     }
 }

@@ -49,7 +49,7 @@ class HomeService(
      * Tìm bài học đầu tiên có tài liệu PDF trong toàn bộ hệ thống (dành cho tài khoản mới)
      */
     private fun findFirstLessonWithPdf(): Pair<Subject, Pair<Lesson, Document>>? {
-        val subjects = subjectRepository.findAllByOrderByDisplayOrderAsc()
+        val subjects = subjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc()
         for (sub in subjects) {
             val lessons = lessonRepository.findBySubjectIdOrderByLessonNoAsc(sub.id!!)
             for (lesson in lessons) {
@@ -63,7 +63,7 @@ class HomeService(
     }
 
     /**
-     * Tìm bài học tiếp theo CÓ TÀI LIỆU PDF (ưu tiên cùng môn, sau đó chuyển sang môn tiếp theo)
+     * Tìm bài học tiếp theo CÓ TÀI LIỆU PDF (ưu tiên cùng môn, sau đó chuyển sang môn tiếp theo theo thứ tự tạo)
      */
     private fun findNextLessonWithPdf(currentLesson: Lesson, currentSubject: Subject): Pair<Subject, Pair<Lesson, Document>>? {
         // 1. Tìm các bài kế tiếp trong cùng môn có lesson_no > currentLesson.lessonNo
@@ -78,8 +78,8 @@ class HomeService(
             }
         }
 
-        // 2. Nếu môn hiện tại không còn bài nào có PDF, tìm trong các môn tiếp theo theo displayOrder
-        val allSubjects = subjectRepository.findAllByOrderByDisplayOrderAsc()
+        // 2. Nếu môn hiện tại không còn bài nào có PDF, tìm trong các môn tiếp theo theo thứ tự tạo môn học
+        val allSubjects = subjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc()
         val currentSubjectIndex = allSubjects.indexOfFirst { it.id == currentSubject.id }
         if (currentSubjectIndex >= 0) {
             for (i in (currentSubjectIndex + 1) until allSubjects.size) {

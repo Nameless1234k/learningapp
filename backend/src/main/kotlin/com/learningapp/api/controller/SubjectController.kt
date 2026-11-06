@@ -88,5 +88,19 @@ class SubjectController(
             ResponseEntity.badRequest().body(ApiResponse(false, e.message ?: "Lỗi cập nhật tiến độ bài học"))
         }
     }
+
+    /**
+     * API LẤY BÀI HỌC KẾ TIẾP (Chuyển bài tiếp theo trong cùng môn hoặc sang môn kế tiếp)
+     * Đường dẫn: GET /api/subjects/lessons/{lessonId}/next
+     */
+    @GetMapping("/lessons/{lessonId}/next")
+    fun getNextLesson(@PathVariable lessonId: UUID): ResponseEntity<*> {
+        return try {
+            val response = subjectService.getNextLesson(lessonId)
+            ResponseEntity.ok(response)
+        } catch (e: Exception) {
+            ResponseEntity.badRequest().body(ApiResponse(false, e.message ?: "Lỗi lấy bài học tiếp theo"))
+        }
+    }
 }
 

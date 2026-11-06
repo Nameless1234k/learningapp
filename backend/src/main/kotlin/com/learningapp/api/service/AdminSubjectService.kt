@@ -19,7 +19,7 @@ class AdminSubjectService(
      */
     fun getSubjects(keyword: String?): List<Subject> {
         return if (keyword.isNullOrBlank()) {
-            subjectRepository.findAllByOrderByDisplayOrderAsc()
+            subjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc()
         } else {
             subjectRepository.searchSubjects(keyword.trim())
         }

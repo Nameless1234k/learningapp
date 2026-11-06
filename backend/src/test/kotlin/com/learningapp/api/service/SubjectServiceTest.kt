@@ -72,7 +72,7 @@ class SubjectServiceTest {
         )
 
         // 2. Giả lập hành vi của Mockito
-        `when`(subjectRepository.findAllByOrderByDisplayOrderAsc()).thenReturn(listOf(subject1, subject2))
+        `when`(subjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc()).thenReturn(listOf(subject1, subject2))
         `when`(lessonRepository.findBySubjectIdOrderByLessonNoAsc(subjectId1)).thenReturn(listOf(lesson1))
         `when`(lessonRepository.findBySubjectIdOrderByLessonNoAsc(subjectId2)).thenReturn(emptyList())
 
@@ -320,5 +320,52 @@ class SubjectServiceTest {
         )
         val response2 = subjectService.updateLessonProgress(userId, lessonId, requestForwards)
         assertEquals(12, response2.lastPosition, "Trang phải được cập nhật lên 12 khi xem trang lớn hơn")
+    }
+
+    @Test
+    @DisplayName("TC06 - Chuyển bài tiếp theo trong cùng môn học khi còn bài")
+    fun testGetNextLesson_SameSubject_Success() {
+        val subjectId = UUID.randomUUID()
+        val subject = Subject(id = subjectId, code = "TRIET_HOC", name = "Triết học Mác - Lênin")
+        val currentLesson = Lesson(id = UUID.randomUUID(), subjectId = subjectId, lessonNo = 1, title = "Bài 1: Khái lược")
+        val nextLesson = Lesson(id = UUID.randomUUID(), subjectId = subjectId, lessonNo = 2, title = "Bài 2: Vật chất")
+
+        `when`(lessonRepository.findById(currentLesson.id!!)).thenReturn(Optional.of(currentLesson))
+        `when`(subjectRepository.findById(subjectId)).thenReturn(Optional.of(subject))
+        `when`(lessonRepository.findBySubjectIdAndLessonNoGreaterThanOrderByLessonNoAsc(subjectId, 1)).thenReturn(listOf(nextLesson))
+
+        val result = subjectService.getNextLesson(currentLesson.id!!)
+
+        assertTrue(result.hasNext)
+        assertFalse(result.isNewSubject)
+        assertEquals(nextLesson.id.toString(), result.lessonId)
+        assertEquals(2, result.lessonNo)
+    }
+
+    @Test
+    @DisplayName("TC07 - Chuyển sang bài đầu tiên của môn học tiếp theo khi đã hết bài trong môn hiện tại")
+    fun testGetNextLesson_NextSubject_Success() {
+        val subject1Id = UUID.randomUUID()
+        val subject2Id = UUID.randomUUID()
+
+        val subject1 = Subject(id = subject1Id, code = "TRIET_HOC", name = "Triết học Mác - Lênin", displayOrder = 1)
+        val subject2 = Subject(id = subject2Id, code = "KTCT", name = "Kinh tế chính trị Mác - Lênin", displayOrder = 2)
+
+        val lastLessonSub1 = Lesson(id = UUID.randomUUID(), subjectId = subject1Id, lessonNo = 11, title = "Bài 11: Con người")
+        val firstLessonSub2 = Lesson(id = UUID.randomUUID(), subjectId = subject2Id, lessonNo = 1, title = "Bài 1: Hàng hóa")
+
+        `when`(lessonRepository.findById(lastLessonSub1.id!!)).thenReturn(Optional.of(lastLessonSub1))
+        `when`(subjectRepository.findById(subject1Id)).thenReturn(Optional.of(subject1))
+        `when`(lessonRepository.findBySubjectIdAndLessonNoGreaterThanOrderByLessonNoAsc(subject1Id, 11)).thenReturn(emptyList())
+        `when`(subjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc()).thenReturn(listOf(subject1, subject2))
+        `when`(lessonRepository.findBySubjectIdOrderByLessonNoAsc(subject2Id)).thenReturn(listOf(firstLessonSub2))
+
+        val result = subjectService.getNextLesson(lastLessonSub1.id!!)
+
+        assertTrue(result.hasNext)
+        assertTrue(result.isNewSubject)
+        assertEquals(firstLessonSub2.id.toString(), result.lessonId)
+        assertEquals(1, result.lessonNo)
+        assertEquals("Kinh tế chính trị Mác - Lênin", result.subjectName)
     }
 }
