@@ -173,165 +173,191 @@ class _LessonDialogState extends State<LessonDialog> {
       ),
       backgroundColor: Colors.white,
       elevation: 16,
-      child: Container(
-        width: 560,
-        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 32),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Tiêu đề (đúng theo ảnh Web 1920 - 3 & 5)
-              Text(
-                isEdit ? 'Sửa bài học' : 'Thêm bài học',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E2238),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              if (_errorMessage != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.red.shade200),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 600,
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 32),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Tiêu đề (đúng theo ảnh Web 1920 - 3 & 5)
+                Text(
+                  isEdit ? 'Sửa bài học' : 'Thêm bài học',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E2238),
                   ),
-                  child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 13)),
                 ),
-              ],
+                const SizedBox(height: 24),
 
-              // Trường 1: Số thứ tự bài học với tiền tố hiển thị "Bài [   ]"
-              const Text(
-                'Số thứ tự bài học',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E2238)),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _lessonNoController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.only(left: 16, right: 10),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Text(
-                          'Bài',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E2238)),
-                        ),
-                        SizedBox(width: 8),
-                        Text('|', style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 16)),
-                      ],
+                if (_errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                  ),
+                ],
+
+                // 1. Tên bài học (để trên đầu theo yêu cầu)
+                const Text(
+                  'Tên bài học',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E2238)),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    hintText: 'Nhập nội dung bài học (vd: Khái lược về Triết học...)',
+                    hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFF1E2238), width: 1.5),
                     ),
                   ),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                  hintText: 'Nhập số thứ tự (vd: 1, 2, 3...)',
-                  hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF1E2238), width: 1.5),
-                  ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) return 'Vui lòng nhập tên bài học';
+                    return null;
+                  },
                 ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'Vui lòng nhập số thứ tự bài học';
-                  }
-                  if (!RegExp(r'^[0-9]+$').hasMatch(val.trim())) {
-                    return 'Số thứ tự bài học phải là số nguyên dương (> 0)';
-                  }
-                  final n = int.tryParse(val.trim());
-                  if (n == null || n <= 0) {
-                    return 'Số thứ tự bài học phải là số nguyên dương (> 0)';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              // Trường 2: Tên bài học
-              const Text(
-                'Tên bài học',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E2238)),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  hintText: 'Nhập tên nội dung bài học (vd: Khái lược về Triết học...)',
-                  hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF1E2238), width: 1.5),
-                  ),
+                // 2. Hàng ngang gọn gàng: Số bài (nhỏ) + Môn học (rộng)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Trường Số bài: nhỏ gọn vừa vặn
+                    SizedBox(
+                      width: 140,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Số bài',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E2238)),
+                          ),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _lessonNoController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              prefixIcon: Padding(
+                                padding: const EdgeInsets.only(left: 12, right: 8),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Text(
+                                      'Bài',
+                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1E2238)),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text('|', style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 16)),
+                                  ],
+                                ),
+                              ),
+                              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                              hintText: '1, 2...',
+                              hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Color(0xFF1E2238), width: 1.5),
+                              ),
+                            ),
+                            validator: (val) {
+                              if (val == null || val.trim().isEmpty) {
+                                return 'Vui lòng nhập số thứ tự bài học';
+                              }
+                              if (!RegExp(r'^[0-9]+$').hasMatch(val.trim())) {
+                                return 'Chỉ nhập số > 0';
+                              }
+                              final n = int.tryParse(val.trim());
+                              if (n == null || n <= 0) {
+                                return 'Chỉ nhập số > 0';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+
+                    // Trường Môn học: chiếm toàn bộ phần còn lại
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Môn học',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E2238)),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            initialValue: widget.subjects.any((s) => s.id == _selectedSubjectId) ? _selectedSubjectId : null,
+                            decoration: InputDecoration(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: Color(0xFF1E2238), width: 1.5),
+                              ),
+                            ),
+                            items: widget.subjects.map((sub) {
+                              return DropdownMenuItem<String>(
+                                value: sub.id,
+                                child: Text(sub.name, overflow: TextOverflow.ellipsis),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setState(() => _selectedSubjectId = val);
+                            },
+                            validator: (val) => val == null ? 'Vui lòng chọn môn học' : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) return 'Vui lòng nhập tên bài học';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              // Trường 2: Môn học
-              const Text(
-                'Môn học',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E2238)),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                initialValue: widget.subjects.any((s) => s.id == _selectedSubjectId) ? _selectedSubjectId : null,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF1E2238), width: 1.5),
-                  ),
-                ),
-                items: widget.subjects.map((sub) {
-                  return DropdownMenuItem<String>(
-                    value: sub.id,
-                    child: Text(sub.name, overflow: TextOverflow.ellipsis),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  setState(() => _selectedSubjectId = val);
-                },
-                validator: (val) => val == null ? 'Vui lòng chọn môn học' : null,
-              ),
-              const SizedBox(height: 20),
-
-              // Trường 3: Tài liệu (Vùng hiển thị hoặc kéo thả / chọn file PDF)
+                // 3. Trường Tài liệu (Vùng hiển thị hoặc kéo thả / chọn file PDF)
               const Text(
                 'Tài liệu',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF1E2238)),
@@ -516,6 +542,7 @@ class _LessonDialogState extends State<LessonDialog> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
