@@ -14,6 +14,9 @@ interface SubjectRepository : JpaRepository<Subject, UUID> {
     fun findAllByOrderByCreatedAtAsc(): List<Subject>
     fun findByCode(code: String): Subject?
 
+    @Query("SELECT MAX(s.displayOrder) FROM Subject s")
+    fun findMaxDisplayOrder(): Int?
+
     @Query("SELECT s FROM Subject s WHERE " +
            "LOWER(s.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(s.code) LIKE LOWER(CONCAT('%', :keyword, '%')) " +

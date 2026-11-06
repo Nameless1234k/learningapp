@@ -194,6 +194,21 @@ class AdminDocumentController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Kiểm tra và lấy ra duy nhất 1 ID được chọn để chỉnh sửa.
+  /// - Nếu không chọn mục nào: ném Exception yêu cầu chọn 1 mục.
+  /// - Nếu chọn từ 2 mục trở lên: ném Exception không cho phép sửa đồng thời.
+  String getSingleSelectedIdForEdit() {
+    if (_selectedItemIds.isEmpty) {
+      throw Exception('Vui lòng chọn 1 mục để thực hiện chỉnh sửa!');
+    }
+    if (_selectedItemIds.length > 1) {
+      throw Exception(
+        'Không thể sửa đồng thời nhiều mục! Bạn đang chọn ${_selectedItemIds.length} mục. Vui lòng chỉ chọn đúng 1 mục để sửa.',
+      );
+    }
+    return _selectedItemIds.first;
+  }
+
   /// Tạo bài học mới
   Future<void> createLesson({
     required String title,

@@ -41,10 +41,14 @@ class AdminSubjectService(
             throw IllegalArgumentException("Mã môn học '$trimmedCode' đã tồn tại!")
         }
 
+        // Tự động tính số thứ tự tiếp theo = max(displayOrder) + 1
+        val maxOrder = subjectRepository.findMaxDisplayOrder() ?: 0
+        val nextOrder = maxOrder + 1
+
         val subject = Subject(
             code = trimmedCode,
             name = trimmedName,
-            displayOrder = request.displayOrder
+            displayOrder = nextOrder
         )
         return subjectRepository.save(subject)
     }
@@ -77,7 +81,7 @@ class AdminSubjectService(
     }
 
     /**
-     * Xóa môn học (kiểm tra bài học tham chiếu)
+     * Xóa môn học (kiểm tra bài học tham chiếu và đánh lại số thứ tự môn)
      */
     @Transactional
     fun deleteSubject(id: UUID): ApiResponse {
@@ -91,6 +95,28 @@ class AdminSubjectService(
         }
 
         subjectRepository.deleteById(id)
-        return ApiResponse(true, "Đã xóa môn học thành công.")
+        subjectRepository.flush()
+
+        // Tự động đánh lại số thứ tự liên tục 1, 2, 3... cho các môn còn lại
+        reindexSubjects()
+
+        return ApiResponse(true, "Đã xóa môn học và đánh lại số thứ tự thành công.")
+    }
+
+    /**
+     * Đánh lại số thứ tự (displayOrder) liên tục 1, 2, 3... cho các môn học còn lại
+     * khi có bất kỳ môn học nào bị xóa ở bất kỳ vị trí nào
+     */
+    @Transactional
+    fun reindexSubjects() {
+        val remainingSubjects = subjectRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc()
+        remainingSubjects.forEachIndexed { index, subject ->
+            val correctOrder = index + 1
+            if (subject.displayOrder != correctOrder) {
+                subject.displayOrder = correctOrder
+                subjectRepository.save(subject)
+            }
+        }
+        subjectRepository.flush()
     }
 }

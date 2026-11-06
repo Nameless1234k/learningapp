@@ -245,5 +245,24 @@ void main() {
       docController.toggleSelectAll(false);
       expect(docController.selectedItemIds, isEmpty);
     });
+
+    test('TC-CTRL-10: getSingleSelectedIdForEdit ném ngoại lệ khi không chọn mục nào hoặc chọn từ 2 mục trở lên', () {
+      // 1. Chưa chọn mục nào -> ném Exception
+      expect(
+        () => docController.getSingleSelectedIdForEdit(),
+        throwsA(predicate((e) => e is Exception && e.toString().contains('Vui lòng chọn 1 mục'))),
+      );
+
+      // 2. Chọn đúng 1 mục -> trả về ID an toàn
+      docController.toggleItem('item_single');
+      expect(docController.getSingleSelectedIdForEdit(), 'item_single');
+
+      // 3. Chọn từ 2 mục trở lên -> ném Exception ngăn chặn sửa đồng thời
+      docController.toggleItem('item_second');
+      expect(
+        () => docController.getSingleSelectedIdForEdit(),
+        throwsA(predicate((e) => e is Exception && e.toString().contains('Không thể sửa đồng thời nhiều mục'))),
+      );
+    });
   });
 }

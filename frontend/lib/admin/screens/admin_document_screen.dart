@@ -79,8 +79,28 @@ class _AdminDocumentScreenState extends State<AdminDocumentScreen> {
 
   // Action: Sửa
   void _handleEdit() {
-    if (_controller.selectedItemIds.length != 1) return;
-    final selectedId = _controller.selectedItemIds.first;
+    final String selectedId;
+    try {
+      selectedId = _controller.getSingleSelectedIdForEdit();
+    } catch (e) {
+      final msg = e.toString().replaceAll("Exception: ", "");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 22),
+              const SizedBox(width: 10),
+              Expanded(child: Text(msg)),
+            ],
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     if (_controller.isLessonTab) {
       final lesson = _controller.lessons.firstWhere((l) => l.id == selectedId);
