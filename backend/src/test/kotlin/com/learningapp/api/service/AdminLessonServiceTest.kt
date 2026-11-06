@@ -117,4 +117,46 @@ class AdminLessonServiceTest {
         assertEquals(1, result.lessonNo)
         assertNull(result.documentId)
     }
+
+    @Test
+    @DisplayName("TC05 - Tự động hoán đổi (auto-swap) lessonNo khi cập nhật bài học trùng số với bài khác trong cùng môn")
+    fun testUpdateLesson_AutoSwapLessonNo_Success() {
+        val lessonAId = UUID.randomUUID()
+        val lessonBId = UUID.randomUUID()
+
+        val lessonA = Lesson(
+            id = lessonAId,
+            subjectId = sampleSubject.id!!,
+            documentId = null,
+            lessonNo = 10,
+            title = "Bài 7: Triết học"
+        )
+        val lessonB = Lesson(
+            id = lessonBId,
+            subjectId = sampleSubject.id!!,
+            documentId = null,
+            lessonNo = 7,
+            title = "Bài 9: Xã hội"
+        )
+
+        `when`(lessonRepository.findById(lessonAId)).thenReturn(Optional.of(lessonA))
+        `when`(lessonRepository.findBySubjectIdAndLessonNo(sampleSubject.id!!, 7)).thenReturn(lessonB)
+        `when`(lessonRepository.findTopBySubjectIdOrderByLessonNoDesc(sampleSubject.id!!)).thenReturn(lessonA)
+        `when`(subjectRepository.findById(sampleSubject.id!!)).thenReturn(Optional.of(sampleSubject))
+        `when`(lessonRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(Lesson::class.java))).thenAnswer { it.arguments[0] }
+
+        val result = adminLessonService.updateLesson(
+            id = lessonAId,
+            title = "Triết học",
+            subjectId = sampleSubject.id,
+            lessonNo = 7,
+            file = null
+        )
+
+        assertNotNull(result)
+        assertEquals(7, result.lessonNo)
+        assertEquals(7, lessonA.lessonNo)
+        // Lesson B phải được hoán đổi sang số cũ của Lesson A (là 10)
+        assertEquals(10, lessonB.lessonNo)
+    }
 }

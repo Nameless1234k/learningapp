@@ -106,6 +106,11 @@ class AdminLessonService(
             IllegalArgumentException("Vui lòng chọn môn học hợp lệ!")
         }
 
+        val existingLesson = lessonRepository.findBySubjectIdAndLessonNo(subjectId, lessonNo)
+        if (existingLesson != null) {
+            throw IllegalArgumentException("Số thứ tự bài học $lessonNo đã được sử dụng bởi bài '${existingLesson.title}' trong môn này!")
+        }
+
         var savedDoc: Document? = null
 
         // Xử lý upload file PDF nếu được cung cấp
@@ -158,13 +163,51 @@ class AdminLessonService(
             IllegalArgumentException("Không tìm thấy bài học với ID: $id")
         }
 
+        // 1. Kiểm tra môn học mới (nếu có đổi môn)
+        val targetSubjectId = subjectId ?: lesson.subjectId
+        if (subjectId != null && subjectId != lesson.subjectId) {
+            if (!subjectRepository.existsById(subjectId)) {
+                throw IllegalArgumentException("Vui lòng chọn môn học hợp lệ!")
+            }
+            lesson.subjectId = subjectId
+        }
+
+        // 2. Kiểm tra xung đột số thứ tự bài học (lessonNo)
+        var conflictingLesson: Lesson? = null
+        val oldLessonNo = lesson.lessonNo
+
         if (lessonNo != null) {
             if (lessonNo <= 0) {
                 throw IllegalArgumentException("Số thứ tự bài học phải là số nguyên dương (> 0)!")
             }
+
+            if (lessonNo != lesson.lessonNo || targetSubjectId != lesson.subjectId) {
+                val existing = lessonRepository.findBySubjectIdAndLessonNo(targetSubjectId, lessonNo)
+                if (existing != null && existing.id != lesson.id) {
+                    if (targetSubjectId == lesson.subjectId) {
+                        // Cùng môn học: kích hoạt chế độ tự động hoán đổi (auto-swap)
+                        conflictingLesson = existing
+                    } else {
+                        throw IllegalArgumentException("Môn học mới đã có bài số $lessonNo ('${existing.title}')!")
+                    }
+                }
+            }
+        }
+
+        // 3. Nếu hoán đổi trong cùng môn: tạm thời gán conflictingLesson sang số tạm lớn để tránh trùng uq_lessons_subject_no
+        if (conflictingLesson != null) {
+            val maxNo = (lessonRepository.findTopBySubjectIdOrderByLessonNoDesc(targetSubjectId)?.lessonNo ?: 100)
+            val tempNo = maxNo + 1000
+            conflictingLesson.lessonNo = tempNo
+            lessonRepository.saveAndFlush(conflictingLesson)
+        }
+
+        // 4. Cập nhật lessonNo mới cho bài hiện tại
+        if (lessonNo != null) {
             lesson.lessonNo = lessonNo
         }
 
+        // 5. Cập nhật tiêu đề bài học
         if (title != null) {
             val trimmedTitle = title.trim()
             if (trimmedTitle.isEmpty()) {
@@ -175,18 +218,11 @@ class AdminLessonService(
             lesson.title = formatLessonTitle(lesson.lessonNo, lesson.title)
         }
 
-        if (subjectId != null) {
-            if (!subjectRepository.existsById(subjectId)) {
-                throw IllegalArgumentException("Vui lòng chọn môn học hợp lệ!")
-            }
-            lesson.subjectId = subjectId
-        }
-
         val subject = subjectRepository.findById(lesson.subjectId).orElseThrow {
             IllegalArgumentException("Không tìm thấy môn học liên kết!")
         }
 
-        // Nếu người dùng chọn gỡ bỏ tệp PDF
+        // 6. Xử lý tệp PDF
         if (removeFile == true) {
             val oldDocId = lesson.documentId
             lesson.documentId = null
@@ -199,7 +235,15 @@ class AdminLessonService(
             lesson.documentId = newDoc.id
         }
 
-        val savedLesson = lessonRepository.save(lesson)
+        // 7. Lưu bài đang sửa (lúc này lesson chiếm lessonNo mới và giải phóng oldLessonNo)
+        val savedLesson = lessonRepository.saveAndFlush(lesson)
+
+        // 8. Nếu có hoán đổi: gán oldLessonNo cho conflictingLesson
+        if (conflictingLesson != null) {
+            conflictingLesson.lessonNo = oldLessonNo
+            lessonRepository.saveAndFlush(conflictingLesson)
+        }
+
         val doc = savedLesson.documentId?.let { documentRepository.findById(it).orElse(null) }
         val (updatedSizeBytes, updatedSizeMb) = calculateFileSize(doc)
 

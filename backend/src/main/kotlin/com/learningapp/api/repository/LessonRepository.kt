@@ -12,6 +12,7 @@ interface LessonRepository : JpaRepository<Lesson, UUID> {
     fun findBySubjectIdOrderByLessonNoAsc(subjectId: UUID): List<Lesson>
     fun countBySubjectId(subjectId: UUID): Long
     fun findTopBySubjectIdOrderByLessonNoDesc(subjectId: UUID): Lesson?
+    fun findBySubjectIdAndLessonNo(subjectId: UUID, lessonNo: Int): Lesson?
 
     // Tìm bài đầu tiên của môn học (lesson_no nhỏ nhất, thường là Bài 1)
     fun findTopBySubjectIdOrderByLessonNoAsc(subjectId: UUID): Lesson?

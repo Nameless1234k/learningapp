@@ -1,6 +1,7 @@
 package com.learningapp.api.exception
 
 import com.learningapp.api.dto.ApiResponse
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -68,6 +69,30 @@ class GlobalExceptionHandler {
         return ResponseEntity
             .status(HttpStatus.METHOD_NOT_ALLOWED)
             .body(ApiResponse(success = false, message = "Phương thức HTTP không được hỗ trợ: ${ex.method}"))
+    }
+
+    /**
+     * Bắt lỗi vi phạm ràng buộc cơ sở dữ liệu (ví dụ: trùng khóa unique key, vi phạm foreign key).
+     * Trả về HTTP 400 (Bad Request) kèm thông điệp rõ ràng, tránh trả về 500.
+     */
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleDataIntegrityViolation(ex: DataIntegrityViolationException): ResponseEntity<ApiResponse> {
+        val rootCause = ex.rootCause?.message ?: ex.message ?: ""
+        println("[SERVER DB CONSTRAINT LOG]: $rootCause")
+
+        val message = when {
+            rootCause.contains("uq_lessons_subject_no", ignoreCase = true) ->
+                "Số thứ tự bài học này đã được sử dụng trong môn học! Vui lòng chọn số khác."
+            rootCause.contains("duplicate key", ignoreCase = true) ->
+                "Dữ liệu gửi lên đã tồn tại trong hệ thống (trùng lặp dữ liệu)!"
+            rootCause.contains("violates foreign key", ignoreCase = true) ->
+                "Không thể thực hiện thao tác do dữ liệu đang được liên kết với đối tượng khác!"
+            else -> "Thao tác cơ sở dữ liệu không hợp lệ hoặc vi phạm ràng buộc dữ liệu."
+        }
+
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ApiResponse(success = false, message = message))
     }
 
     /**

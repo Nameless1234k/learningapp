@@ -39,3 +39,7 @@ HELP.md
 
 # Local properties / credentials
 **/local.properties
+
+# Uploads
+uploads/
+backend/uploads/
