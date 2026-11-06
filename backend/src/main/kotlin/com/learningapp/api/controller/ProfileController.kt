@@ -61,7 +61,7 @@ class ProfileController(
     }
 
     /**
-     * Lấy cài đặt Sáng / Tối và Thông báo: GET /api/user/settings?userId={id}
+     * Lấy cài đặt Sáng / Tối: GET /api/user/settings?userId={id}
      */
     @GetMapping(ApiEndpoints.UserProfile.SETTINGS)
     fun getSettings(@RequestParam userId: UUID): ResponseEntity<*> {
@@ -74,7 +74,7 @@ class ProfileController(
     }
 
     /**
-     * Cập nhật cài đặt Sáng / Tối (Switch toggle) hoặc Thông báo: PUT /api/user/settings?userId={id}
+     * Cập nhật cài đặt Sáng / Tối (Switch toggle): PUT /api/user/settings?userId={id}
      */
     @PutMapping(ApiEndpoints.UserProfile.SETTINGS)
     fun updateSettings(

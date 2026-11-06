@@ -103,7 +103,7 @@ class ProfileService(
     }
 
     /**
-     * Lấy cài đặt giao diện (Dark mode) và thông báo của người dùng
+     * Lấy cài đặt giao diện (Dark mode) của người dùng
      */
     fun getSettings(userId: UUID): UserSettingsDTO {
         val setting = userSettingRepository.findById(userId).orElseGet {
@@ -115,13 +115,12 @@ class ProfileService(
             )
         }
         return UserSettingsDTO(
-            darkMode = setting.darkMode,
-            notificationEnabled = setting.notificationEnabled
+            darkMode = setting.darkMode
         )
     }
 
     /**
-     * Cập nhật cài đặt giao diện Sáng / Tối hoặc Thông báo
+     * Cập nhật cài đặt giao diện Sáng / Tối
      */
     @Transactional
     fun updateSettings(userId: UUID, request: UpdateSettingsRequest): UserSettingsDTO {
@@ -135,15 +134,11 @@ class ProfileService(
         if (request.darkMode != null) {
             setting.darkMode = request.darkMode
         }
-        if (request.notificationEnabled != null) {
-            setting.notificationEnabled = request.notificationEnabled
-        }
         setting.updatedAt = LocalDateTime.now()
 
         val saved = userSettingRepository.save(setting)
         return UserSettingsDTO(
-            darkMode = saved.darkMode,
-            notificationEnabled = saved.notificationEnabled
+            darkMode = saved.darkMode
         )
     }
 

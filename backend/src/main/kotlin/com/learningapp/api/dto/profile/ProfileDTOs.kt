@@ -34,19 +34,17 @@ data class ChangePasswordRequest(
 )
 
 /**
- * DTO thiết lập người dùng (Dark mode, Thông báo)
+ * DTO thiết lập người dùng (Dark mode)
  */
 data class UserSettingsDTO(
-    val darkMode: Boolean,
-    val notificationEnabled: Boolean
+    val darkMode: Boolean
 )
 
 /**
- * Yêu cầu cập nhật thiết lập (Dark mode, Thông báo)
+ * Yêu cầu cập nhật thiết lập (Dark mode)
  */
 data class UpdateSettingsRequest(
-    val darkMode: Boolean? = null,
-    val notificationEnabled: Boolean? = null
+    val darkMode: Boolean? = null
 )
 
 /**
